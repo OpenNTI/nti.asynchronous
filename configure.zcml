@@ -1,0 +1,19 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml"
+			xmlns:gdb="http://nextthought.com/ntp/graphdb">
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+
+	<adapter factory=".job.Job"
+			 for="types.FunctionType"
+			 provides=".interfaces.IJob" />
+             
+	<adapter factory=".job.Job"
+			 for="types.MethodType"
+			 provides=".interfaces.IJob" />
+             
+</configure>
