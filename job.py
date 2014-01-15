@@ -23,12 +23,25 @@ from persistent.mapping import PersistentMapping
 from .utils import custom_repr
 from . import interfaces as async_interfaces
 
+NEW = 0
+ACTIVE = 1
+FAILED = 3
+COMPLETED = 2
+
+_status_mapping = {
+	NEW : async_interfaces.NEW,
+	ACTIVE: async_interfaces.ACTIVE,
+	COMPLETED: async_interfaces.COMPLETED,
+	FAILED: async_interfaces.FAILED}
+
 @interface.implementer(async_interfaces.IJob)
 class Job(Persistent, zcontained.Contained):
 
-	_callable_name = _callable_root = _result = None
+	_active_start = _active_end = None
+	_status_id = _callable_name = _callable_root = _result = None
 
 	def __init__(self, *args, **kwargs):
+		self._status_id = NEW
 		self.args = BList(args)
 		self.callable = self.args.pop(0)
 		self.kwargs = PersistentMapping(kwargs)
@@ -40,6 +53,17 @@ class Job(Persistent, zcontained.Contained):
 	@property
 	def result(self):
 		return self._result
+
+	@property
+	def status(self):
+		return _status_mapping[self._status_id]
+	@property
+	def has_failed(self):
+		return self._status_id == FAILED
+
+	@property
+	def is_success(self):
+		return self._status_id == COMPLETED
 
 	def _get_callable(self):
 		if self._callable_name is None:
@@ -73,11 +97,14 @@ class Job(Persistent, zcontained.Contained):
 		__traceback_info__ = self._callable_root, self._callable_name, \
 							 effective_args, effective_kwargs
 		try:
+			self._status_id = ACTIVE
 			result = self.callable(*effective_args, **effective_kwargs)
+			self._status_id = COMPLETED
 			self._result = result
 			return result
 		except Exception, e:
 			self._result = e
+			self._status_id = FAILED
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.now(pytz.UTC)

@@ -10,6 +10,11 @@ from zope import interface
 from zope.location import interfaces as loc_interfaces
 from zope.annotation import interfaces as an_interfaces
 
+NEW = u'New'
+FAILED = u'Failed'
+ACTIVE = u'Active'
+COMPLETED = u'Completed'
+
 class IQueue(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 
 	def put(item):
