@@ -66,3 +66,8 @@ class IJob(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 		self.args for the call, and any kwargs effectively update self.kwargs
 		for the call.
 		"""
+
+class IJobReactor(interface.Interface):
+	"""
+	marker interface for a reactor
+	"""

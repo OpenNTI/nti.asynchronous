@@ -16,4 +16,6 @@
 			 for="types.MethodType"
 			 provides=".interfaces.IJob" />
              
+	<utility factory=".reactor.JobReactor" />
+		
 </configure>
