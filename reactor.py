@@ -28,7 +28,7 @@ def _execute_job(job):
 
 def _pull_job(inline=False):
 	queue = component.getUtility(async_interfaces.IQueue)
-	job = queue.pull()
+	job = queue.claim()
 	if job is None:
 		return
 
