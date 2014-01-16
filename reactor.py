@@ -10,62 +10,59 @@ logger = __import__('logging').getLogger(__name__)
 
 import os
 import gevent
-import functools
+import random
 
 from zope import component
 from zope import interface
+
+from ZODB import loglevels
 
 from nti.dataserver import interfaces as nti_interfaces
 
 from . import interfaces as async_interfaces
 
-def _execute_job(job):
-	logger.debug("executing job %r", job)
-	job()
-	if job.has_failed:
-		logger.error("job %r failed", job)
-	logger.debug("job %r completed", job)
-
-def _pull_job(inline=False):
-	queue = component.getUtility(async_interfaces.IQueue)
-	job = queue.claim()
-	if job is None:
-		return
-
-	if inline:
-		_execute_job(job)
-	else:
-		# XXX Execute in a seperate transaction
-		def _executor():
-			transaction_runner = \
-				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
-			func = functools.partial(_execute_job, job=job)
-			transaction_runner(func)
-		gevent.spawn(_executor)
-
 @interface.implementer(async_interfaces.IJobReactor)
 class JobReactor(object):
 
 	stop = False
-	inline = False
+	inline = True
 
-	def __init__(self, poll_inteval=5):
+	def __init__(self, poll_inteval=2):
+		self.pid = os.getpid()
 		self.poll_inteval = poll_inteval
 		self.processor = self._spawn_job_processor()
+
+	@classmethod
+	def queue(self):
+		queue = component.getUtility(async_interfaces.IQueue)
+		return queue
+
+	def execute_job(self):
+		job = self.queue().claim()
+		if job is None:
+			return False
+
+		pid = self.pid
+		logger.log(loglevels.TRACE, "%s executing job %r", pid, job)
+		job()
+		if job.has_failed:
+			logger.error("job %r failed in process %s", job, pid)
+		logger.log(loglevels.TRACE, "%s executing job %r", pid, job)
+		return True
 
 	def halt(self):
 		self.stop = True
 
 	def _spawn_job_processor(self):
+		random.seed()
 		def process():
-			pid = os.getpid()
+			gevent.sleep(seconds=30)
 			while not self.stop:
 				gevent.sleep(seconds=self.poll_inteval)
 				if not self.stop:
 					try:
-						self.process_job(pid)
-					except component.ComponentLookupError:
-						logger.error("process %s could not get component", pid)
+						self.process_job(self.pid)
+					except:
 						break
 
 		result = gevent.spawn(process)
@@ -75,9 +72,18 @@ class JobReactor(object):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 		try:
-			func = functools.partial(_pull_job, inline=self.inline)
-			transaction_runner(func, retries=3)
+			result = transaction_runner(self.execute_job, retries=3)
+			if result:
+				self.poll_inteval = random.random() * 3
+			else:
+				self.poll_inteval += 5
+				self.poll_inteval = min(self.poll_inteval, 60)
+		except component.ComponentLookupError:
+			raise
+		except AttributeError:
+			logger.error('Cannot pull job from queue (%s)', pid)
+			raise
 		except Exception:
 			logger.exception('Cannot pull job from queue (%s)', pid)
-			raise
+
 
