@@ -26,6 +26,7 @@ class JobReactor(object):
 
 	stop = False
 	inline = True
+	processor = None
 
 	def __init__(self, poll_inteval=2):
 		self.pid = os.getpid()
@@ -53,10 +54,17 @@ class JobReactor(object):
 	def halt(self):
 		self.stop = True
 
+	def start(self):
+		if self.processor is None:
+			self.processor = self._spawn_job_processor()
+
 	def _spawn_job_processor(self):
 		random.seed()
 		def process():
-			gevent.sleep(seconds=30)
+			# XXX not as efficient, but wait some time before start checking
+			# the job queue
+			secs = random.randint(25, 35)
+			gevent.sleep(seconds=secs)
 			while not self.stop:
 				gevent.sleep(seconds=self.poll_inteval)
 				if not self.stop:
@@ -64,6 +72,7 @@ class JobReactor(object):
 						self.process_job(self.pid)
 					except:
 						break
+			self.processor = None
 
 		result = gevent.spawn(process)
 		return result
