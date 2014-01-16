@@ -63,7 +63,7 @@ class JobReactor(object):
 				gevent.sleep(seconds=self.poll_inteval)
 				if not self.stop:
 					try:
-						self.process_job()
+						self.process_job(pid)
 					except component.ComponentLookupError:
 						logger.error("process %s could not get component", pid)
 						break
@@ -71,12 +71,13 @@ class JobReactor(object):
 		result = gevent.spawn(process)
 		return result
 
-	def process_job(self):
+	def process_job(self, pid):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 		try:
 			func = functools.partial(_pull_job, inline=self.inline)
 			transaction_runner(func, retries=3)
 		except Exception:
-			logger.exception('Cannot process job messages')
+			logger.exception('Cannot pull job from queue (%s)', pid)
+			raise
 
