@@ -16,6 +16,7 @@ from zope import component
 from zope import interface
 
 from ZODB import loglevels
+from ZODB.POSException import ConflictError
 
 from nti.dataserver import interfaces as nti_interfaces
 
@@ -31,7 +32,6 @@ class JobReactor(object):
 	def __init__(self, poll_inteval=2):
 		self.pid = os.getpid()
 		self.poll_inteval = poll_inteval
-		self.processor = self._spawn_job_processor()
 
 	@classmethod
 	def queue(self):
@@ -61,19 +61,15 @@ class JobReactor(object):
 	def _spawn_job_processor(self):
 		random.seed()
 		def process():
-			# XXX not as efficient, but wait some time before start checking
-			# the job queue
-			secs = random.randint(25, 35)
-			gevent.sleep(seconds=secs)
+			gevent.sleep(seconds=random.randint(3, 10))
 			while not self.stop:
 				gevent.sleep(seconds=self.poll_inteval)
 				if not self.stop:
-					try:
-						self.process_job(self.pid)
-					except:
-						break
-			self.processor = None
-
+					if not self.process_job(self.pid):
+						self.stop = True
+						self.processor = None
+						logger.warn('Exiting reactor. pid=(%s)', self.pid)
+			logger.info("Reactor %s exited", self.pid)
 		result = gevent.spawn(process)
 		return result
 
@@ -87,12 +83,17 @@ class JobReactor(object):
 			else:
 				self.poll_inteval += 5
 				self.poll_inteval = min(self.poll_inteval, 60)
-		except component.ComponentLookupError:
-			raise
-		except AttributeError:
-			logger.error('Cannot pull job from queue (%s)', pid)
-			raise
+		except (component.ComponentLookupError, AttributeError), e:
+			logger.error('Error while processing queued job. pid=(%s), error=%s', pid, e)
+			return False
+		except ConflictError:
+			logger.error('ConflictError while pulling job from queue. pid=(%s)', pid)
 		except Exception:
-			logger.exception('Cannot pull job from queue (%s)', pid)
+			logger.exception('Cannot execute job. pid=(%s)', pid)
+		return True
 
+from zope.processlifetime import IDatabaseOpenedWithRoot
 
+@component.adapter(IDatabaseOpenedWithRoot)
+def _start_reactor(database_event):
+	JobReactor().start()
