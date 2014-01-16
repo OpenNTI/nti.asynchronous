@@ -96,4 +96,6 @@ from zope.processlifetime import IDatabaseOpenedWithRoot
 
 @component.adapter(IDatabaseOpenedWithRoot)
 def _start_reactor(database_event):
-	JobReactor().start()
+	reactor = JobReactor()
+	component.provideUtility(reactor, async_interfaces.IJobReactor)
+	reactor.start()
