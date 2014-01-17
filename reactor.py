@@ -30,26 +30,15 @@ class JobReactor(object):
 	processor = None
 
 	def __init__(self, poll_inteval=2):
-		self.pid = os.getpid()
 		self.poll_inteval = poll_inteval
+
+	def __repr__(self):
+		return "(%s)" % self.pid
 
 	@classmethod
 	def queue(self):
 		queue = component.getUtility(async_interfaces.IQueue)
 		return queue
-
-	def execute_job(self):
-		job = self.queue().claim()
-		if job is None:
-			return False
-
-		pid = self.pid
-		logger.log(loglevels.TRACE, "%s executing job %r", pid, job)
-		job()
-		if job.has_failed:
-			logger.error("job %r failed in process %s", job, pid)
-		logger.log(loglevels.TRACE, "%s executing job %r", pid, job)
-		return True
 
 	def halt(self):
 		self.stop = True
@@ -58,20 +47,18 @@ class JobReactor(object):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
 
-	def _spawn_job_processor(self):
-		random.seed()
-		def process():
-			gevent.sleep(seconds=random.randint(3, 10))
-			while not self.stop:
-				gevent.sleep(seconds=self.poll_inteval)
-				if not self.stop:
-					if not self.process_job(self.pid):
-						self.stop = True
-						self.processor = None
-						logger.warn('Exiting reactor. pid=(%s)', self.pid)
-			logger.info("Reactor %s exited", self.pid)
-		result = gevent.spawn(process)
-		return result
+	def execute_job(self):
+		job = self.queue().claim()
+		if job is None:
+			return False
+
+		logger.log(loglevels.TRACE, "%s executing job %r", self.pid, job)
+		job()
+		if job.has_failed:
+			logger.error("job %r failed in process %s", job, self.pid)
+		logger.log(loglevels.TRACE, "%s executed job %r", self.pid, job)
+
+		return True
 
 	def process_job(self, pid):
 		transaction_runner = \
@@ -91,6 +78,29 @@ class JobReactor(object):
 		except Exception:
 			logger.exception('Cannot execute job. pid=(%s)', pid)
 		return True
+
+	def run(self, sleep=gevent.sleep):
+		random.seed()
+		self.stop = False
+		self.pid = os.getpid()
+		try:
+			sleep(random.randint(3, 10))
+			while not self.stop:
+				try:
+					sleep(self.poll_inteval)
+					if not self.stop and not self.process_job(self.pid):
+						self.stop = True
+				except KeyboardInterrupt:
+					break
+		finally:
+			logger.warn('Exiting reactor. pid=(%s)', self.pid)
+			self.processor = None
+
+	__call__ = run
+
+	def _spawn_job_processor(self):
+		result = gevent.spawn(self.run)
+		return result
 
 from zope.processlifetime import IDatabaseOpenedWithRoot
 
