@@ -40,6 +40,7 @@ def main():
     run_with_dataserver(environment_dir=env_dir,
                         xmlconfig_packages=conf_packages,
                         verbose=args.verbose,
+                        minimal_ds=False,
                         function=lambda: _process_args(args))
 
 def _tone_down_logging():
