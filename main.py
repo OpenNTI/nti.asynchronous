@@ -28,9 +28,8 @@ def handler(*args):
 signal.signal(signal.SIGINT, sigint_handler)
 signal.signal(signal.SIGTERM, handler)
 
-
 def main():
-    arg_parser = argparse.ArgumentParser(description="Initialize a class with sample data")
+    arg_parser = argparse.ArgumentParser(description="Graphdb job processor")
     arg_parser.add_argument('-v', '--verbose', help="Be verbose", action='store_true',
                              dest='verbose')
     arg_parser.add_argument('env_dir', help="Dataserver environment root directory")
@@ -43,7 +42,7 @@ def main():
                         verbose=args.verbose,
                         function=lambda: _process_args(args))
 
-def tone_down_logging():
+def _tone_down_logging():
     import logging
     try:
         package = 'py2neo.packages.httpstream.http'
@@ -55,7 +54,7 @@ def tone_down_logging():
 
 def _process_args(args):
     if not args.verbose:
-        tone_down_logging()
+        _tone_down_logging()
     reactor = JobReactor()
     reactor(time.sleep)
 

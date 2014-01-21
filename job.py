@@ -57,6 +57,7 @@ class Job(Persistent, zcontained.Contained):
 	@property
 	def status(self):
 		return _status_mapping[self._status_id]
+
 	@property
 	def has_failed(self):
 		return self._status_id == FAILED
