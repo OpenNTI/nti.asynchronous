@@ -28,6 +28,7 @@ def handler(*args):
 signal.signal(signal.SIGINT, sigint_handler)
 signal.signal(signal.SIGTERM, handler)
 
+
 def main():
     arg_parser = argparse.ArgumentParser(description="Initialize a class with sample data")
     arg_parser.add_argument('-v', '--verbose', help="Be verbose", action='store_true',
@@ -42,7 +43,19 @@ def main():
                         verbose=args.verbose,
                         function=lambda: _process_args(args))
 
+def tone_down_logging():
+    import logging
+    try:
+        package = 'py2neo.packages.httpstream.http'
+        __import__(package)
+        py2neo_logger = logging.getLogger(package)
+        py2neo_logger.setLevel(logging.ERROR)
+    except ImportError:
+        logger.error("could not setup logging level for py2neo")
+
 def _process_args(args):
+    if not args.verbose:
+        tone_down_logging()
     reactor = JobReactor()
     reactor(time.sleep)
 
