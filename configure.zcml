@@ -16,7 +16,4 @@
 			 for="types.MethodType"
 			 provides=".interfaces.IJob" />
 			 
-	<!--
-	<subscriber handler=".reactor._start_reactor" />
-	-->
 </configure>

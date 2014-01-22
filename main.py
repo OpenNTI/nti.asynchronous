@@ -12,7 +12,10 @@ import os
 import sys
 import time
 import signal
+import logging
 import argparse
+
+import zope.exceptions
 
 from nti.graphdb.async.reactor import JobReactor
 
@@ -44,7 +47,6 @@ def main():
                         function=lambda: _process_args(args))
 
 def _tone_down_logging():
-    import logging
     try:
         package = 'py2neo.packages.httpstream.http'
         __import__(package)
@@ -54,8 +56,13 @@ def _tone_down_logging():
         logger.error("could not setup logging level for py2neo")
 
 def _process_args(args):
+    
+    ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
+    logging.root.handlers[0].setFormatter(zope.exceptions.log.Formatter(ei))
+    
     if not args.verbose:
         _tone_down_logging()
+
     reactor = JobReactor()
     reactor(time.sleep)
 
