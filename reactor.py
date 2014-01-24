@@ -64,7 +64,7 @@ class JobReactor(object):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 		try:
-			result = transaction_runner(self.execute_job, retries=3)
+			result = transaction_runner(self.execute_job, retries=1, sleep=1)
 			if result:
 				self.poll_inteval = random.random() * 3
 			else:
