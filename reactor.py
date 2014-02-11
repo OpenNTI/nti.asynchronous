@@ -80,14 +80,15 @@ class JobReactor(object):
 
 		lock, aquired = self._get_lock()
 		try:
-			result = transaction_runner(self.execute_job, retries=1, sleep=1)
-			if result:
-				self.poll_inteval = random.random() * 2
-			else:
-				self.poll_inteval += 5
-				self.poll_inteval = min(self.poll_inteval, 60)
+			if aquired:
+				result = transaction_runner(self.execute_job, retries=1, sleep=1)
+				if result:
+					self.poll_inteval = random.random() * 2.5
+				else:
+					self.poll_inteval += 5
+					self.poll_inteval = min(self.poll_inteval, 60)
 		except (component.ComponentLookupError, AttributeError), e:
-			logger.error('Error while processing queued job. pid=(%s), error=%s', pid, e)
+			logger.error('Error while processing job. pid=(%s), error=%s', pid, e)
 			return False
 		except ConflictError:
 			logger.error('ConflictError while pulling job from queue. pid=(%s)', pid)
