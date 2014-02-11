@@ -22,6 +22,9 @@ from nti.dataserver import interfaces as nti_interfaces
 
 from . import interfaces as async_interfaces
 
+LOCK_EXP_TIME = 4
+LOCK_NAME = u"nti/graphdb/lock"
+
 @interface.implementer(async_interfaces.IJobReactor)
 class JobReactor(object):
 
@@ -60,13 +63,26 @@ class JobReactor(object):
 
 		return True
 
+	@classmethod
+	def _get_lock(self):
+		client = component.getUtility(nti_interfaces.IRedisClient)
+		try:
+			lock = client.lock(LOCK_NAME, LOCK_EXP_TIME)
+			aquired = lock.acquire(blocking=False)
+		except TypeError:
+			lock = client.lock(LOCK_NAME)
+			aquired = lock.acquire()
+		return lock, aquired
+	
 	def process_job(self, pid):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
+
+		lock, aquired = self._get_lock()
 		try:
 			result = transaction_runner(self.execute_job, retries=1, sleep=1)
 			if result:
-				self.poll_inteval = random.random() * 3
+				self.poll_inteval = random.random() * 2
 			else:
 				self.poll_inteval += 5
 				self.poll_inteval = min(self.poll_inteval, 60)
@@ -77,6 +93,9 @@ class JobReactor(object):
 			logger.error('ConflictError while pulling job from queue. pid=(%s)', pid)
 		except Exception:
 			logger.exception('Cannot execute job. pid=(%s)', pid)
+		finally:
+			if aquired:
+				lock.release()
 		return True
 
 	def run(self, sleep=gevent.sleep):
