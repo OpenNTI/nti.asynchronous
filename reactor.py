@@ -22,9 +22,6 @@ from nti.dataserver import interfaces as nti_interfaces
 
 from . import interfaces as async_interfaces
 
-LOCK_EXP_TIME = 4
-LOCK_NAME = u"nti/graphdb/lock"
-
 @interface.implementer(async_interfaces.IJobReactor)
 class JobReactor(object):
 
@@ -36,7 +33,7 @@ class JobReactor(object):
 		self.poll_inteval = poll_inteval
 
 	def __repr__(self):
-		return "(%s)" % self.pid
+		return "GraphReactor(%s)" % self.pid
 
 	@classmethod
 	def queue(self):
@@ -62,31 +59,19 @@ class JobReactor(object):
 		logger.log(loglevels.TRACE, "%s executed job %r", self.pid, job)
 
 		return True
-
-	@classmethod
-	def _get_lock(self):
-		client = component.getUtility(nti_interfaces.IRedisClient)
-		try:
-			lock = client.lock(LOCK_NAME, LOCK_EXP_TIME)
-			aquired = lock.acquire(blocking=False)
-		except TypeError:
-			lock = client.lock(LOCK_NAME)
-			aquired = lock.acquire()
-		return lock, aquired
 	
 	def process_job(self, pid):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 
-		lock, aquired = self._get_lock()
 		try:
-			if aquired:
-				result = transaction_runner(self.execute_job, retries=1, sleep=1)
-				if result:
-					self.poll_inteval = random.random() * 2.5
-				else:
-					self.poll_inteval += 5
-					self.poll_inteval = min(self.poll_inteval, 60)
+			result = transaction_runner(self.execute_job, retries=1, sleep=1)
+			if result:
+				self.poll_inteval = random.random() * 2.5
+				random.uniform
+			else:
+				self.poll_inteval += random.uniform(1, 5)
+				self.poll_inteval = min(self.poll_inteval, 60)
 		except (component.ComponentLookupError, AttributeError), e:
 			logger.error('Error while processing job. pid=(%s), error=%s', pid, e)
 			return False
@@ -94,17 +79,14 @@ class JobReactor(object):
 			logger.error('ConflictError while pulling job from queue. pid=(%s)', pid)
 		except Exception:
 			logger.exception('Cannot execute job. pid=(%s)', pid)
-		finally:
-			if aquired:
-				lock.release()
 		return True
 
 	def run(self, sleep=gevent.sleep):
 		random.seed()
 		self.stop = False
-		self.pid = os.getpid()
+		self.pid = str(os.getpid())
 		try:
-			sleep(random.randint(3, 10))
+			logger.info('Starting reactor. pid=(%s)', self.pid)
 			while not self.stop:
 				try:
 					sleep(self.poll_inteval)
@@ -122,10 +104,3 @@ class JobReactor(object):
 		result = gevent.spawn(self.run)
 		return result
 
-from zope.processlifetime import IDatabaseOpenedWithRoot
-
-@component.adapter(IDatabaseOpenedWithRoot)
-def _start_reactor(database_event):
-	reactor = JobReactor()
-	component.provideUtility(reactor, async_interfaces.IJobReactor)
-	reactor.start()
