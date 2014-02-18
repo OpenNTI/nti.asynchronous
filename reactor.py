@@ -74,7 +74,7 @@ class JobReactor(object):
 		result = True
 		try:
 			if transaction_runner(self.execute_job, retries=1, sleep=1):
-				self.poll_inteval = random.random() * 2.5
+				self.poll_inteval = random.random() * 2
 			else:
 				self.poll_inteval += random.uniform(1, 5)
 				self.poll_inteval = min(self.poll_inteval, 60)
