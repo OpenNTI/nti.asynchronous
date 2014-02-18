@@ -61,6 +61,7 @@ class Job(Persistent, zcontained.Contained):
 	@property
 	def has_failed(self):
 		return self._status_id == FAILED
+	hasFailed = has_failed
 
 	@property
 	def is_success(self):

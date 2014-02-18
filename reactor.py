@@ -26,10 +26,11 @@ from . import interfaces as async_interfaces
 class JobReactor(object):
 
 	stop = False
-	inline = True
 	processor = None
+	currentJob = None
 
-	def __init__(self, poll_inteval=2):
+	def __init__(self, poll_inteval=2, exitOnError=False):
+		self.exitOnError = exitOnError
 		self.poll_inteval = poll_inteval
 
 	def __repr__(self):
@@ -48,14 +49,16 @@ class JobReactor(object):
 			self.processor = self._spawn_job_processor()
 
 	def execute_job(self):
-		job = self.queue().claim()
+		self.currentJob = job = self.queue().claim()
 		if job is None:
 			return False
 
 		logger.log(loglevels.TRACE, "%s executing job %r", self.pid, job)
 		job()
-		if job.has_failed:
+		if job.hasFailed:
 			logger.error("job %r failed in process %s", job, self.pid)
+			self.queue().putFailed(job)
+
 		logger.log(loglevels.TRACE, "%s executed job %r", self.pid, job)
 
 		return True
@@ -64,6 +67,7 @@ class JobReactor(object):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 
+		result = True
 		try:
 			result = transaction_runner(self.execute_job, retries=1, sleep=1)
 			if result:
@@ -74,12 +78,13 @@ class JobReactor(object):
 				self.poll_inteval = min(self.poll_inteval, 60)
 		except (component.ComponentLookupError, AttributeError), e:
 			logger.error('Error while processing job. pid=(%s), error=%s', pid, e)
-			return False
+			result = False
 		except ConflictError:
 			logger.error('ConflictError while pulling job from queue. pid=(%s)', pid)
 		except Exception:
 			logger.exception('Cannot execute job. pid=(%s)', pid)
-		return True
+			result = not self.exitOnError
+		return result
 
 	def run(self, sleep=gevent.sleep):
 		random.seed()

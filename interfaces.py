@@ -41,6 +41,11 @@ class IQueue(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 		available.
 		"""
 
+	def putFailed(item):
+		"""
+		Stores a failed job for review
+		"""
+
 class IJob(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 
 	result = interface.Attribute("""The result of the call. """)

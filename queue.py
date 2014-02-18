@@ -13,6 +13,8 @@ import BTrees
 from zope import interface
 from zope.container import contained as zcontained
 
+from zc.blist import BList
+
 from zc.queue import CompositeQueue
 
 from persistent import Persistent
@@ -21,6 +23,8 @@ from . import interfaces as async_interfaces
 
 @interface.implementer(async_interfaces.IQueue)
 class Queue(Persistent, zcontained.Contained):
+
+	_failed_jobs = None
 
 	def __init__(self):
 		self._queue = CompositeQueue()
@@ -87,6 +91,13 @@ class Queue(Persistent, zcontained.Contained):
 			self._length.change(-1)
 			return job
 		return default
+
+	def putFailed(self, item):
+		if self._failed_jobs is None:
+			self._failed_jobs = BList()
+		item = async_interfaces.IJob(item)
+		self._failed_jobs.append(item)
+	put_failed = putFailed
 
 	def __len__(self):
 		return self._length()
