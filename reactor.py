@@ -44,6 +44,10 @@ class JobReactor(object):
 	def halt(self):
 		self.stop = True
 
+	@property
+	def isRunning(self):
+		return not self.stop and self.processor != None
+
 	def start(self):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
