@@ -92,6 +92,13 @@ class Queue(Persistent, zcontained.Contained):
 			return job
 		return default
 
+	def empty(self):
+		result = 0
+		while not self._length():
+			self.claim()
+			result += 1
+		return result
+
 	def putFailed(self, item):
 		if self._failed_jobs is None:
 			self._failed_jobs = BList()
