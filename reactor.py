@@ -22,8 +22,8 @@ from nti.dataserver import interfaces as nti_interfaces
 
 from . import interfaces as async_interfaces
 
-@interface.implementer(async_interfaces.IJobReactor)
-class JobReactor(object):
+@interface.implementer(async_interfaces.IGraphReactor)
+class GraphReactor(object):
 
 	stop = False
 	processor = None

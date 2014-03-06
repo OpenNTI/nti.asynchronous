@@ -72,7 +72,7 @@ class IJob(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 		for the call.
 		"""
 
-class IJobReactor(interface.Interface):
+class IGraphReactor(interface.Interface):
 	"""
 	marker interface for a reactor
 	"""
