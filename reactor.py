@@ -15,7 +15,6 @@ import random
 from zope import component
 from zope import interface
 
-from ZODB import loglevels
 from ZODB.POSException import ConflictError
 
 from nti.dataserver import interfaces as nti_interfaces
@@ -57,13 +56,11 @@ class GraphReactor(object):
 		if job is None:
 			return False
 
-		logger.log(loglevels.TRACE, "%s executing job %r", self.pid, job)
 		job()
 		if job.hasFailed:
-			logger.error("job %r failed in process %s", job, self.pid)
+			logger.error("job %r failed", job)
 			self.queue().putFailed(job)
-
-		logger.log(loglevels.TRACE, "%s executed job %r", self.pid, job)
+		logger.debug("job %r has been executed", job)
 
 		return True
 	
