@@ -70,7 +70,7 @@ class GraphReactor(object):
 
 		result = True
 		try:
-			if transaction_runner(self.execute_job, retries=1, sleep=1):
+			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				self.poll_inteval = random.random() * 1.5
 			else:
 				self.poll_inteval += random.uniform(1, 5)
