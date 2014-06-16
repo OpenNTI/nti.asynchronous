@@ -1,0 +1,19 @@
+Metadata-Version: 1.1
+Name: nti.async
+Version: 0.0.0.dev
+Summary: NTI Async
+Home-page: UNKNOWN
+Author: Jason Madden
+Author-email: jason@nextthought.com
+License: Proprietary
+Description: 
+        
+Keywords: ZODB
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.3
