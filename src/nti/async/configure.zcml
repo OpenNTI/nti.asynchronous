@@ -16,4 +16,5 @@
 			 for="types.MethodType"
 			 provides=".interfaces.IJob" />
 			 
+	<configure zcml:condition="have devmode" />
 </configure>
