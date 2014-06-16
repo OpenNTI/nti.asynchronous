@@ -15,15 +15,15 @@ from hamcrest import has_property
 
 import operator
 
-from nti.graphdb.async.job import Job
-from nti.graphdb.async.queue import Queue
+from nti.async.job import Job
+from nti.async.queue import Queue
 
-from nti.graphdb.async.tests import ConfiguringTestBase
+from nti.async.tests import AsyncTestCase
 
 def mock_work():
 	return 42
 
-class TestQueue(ConfiguringTestBase):
+class TestQueue(AsyncTestCase):
 
 	def test_empty(self):
 		queue = Queue()

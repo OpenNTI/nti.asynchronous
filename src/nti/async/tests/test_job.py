@@ -13,9 +13,9 @@ from hamcrest import has_property
 
 import persistent
 
-from nti.graphdb.async.job import Job
+from nti.async.job import Job
 
-from nti.graphdb.async.tests import ConfiguringTestBase
+from nti.async.tests import AsyncTestCase
 
 def call():
 	return 'my result'
@@ -37,7 +37,7 @@ def multiply(first, second, third=None):
 		res *= third
 	return res
 
-class TestJob(ConfiguringTestBase):
+class TestJob(AsyncTestCase):
 
 	def test_call(self):
 		job = Job(call)
