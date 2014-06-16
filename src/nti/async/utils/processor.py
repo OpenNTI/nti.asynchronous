@@ -40,19 +40,13 @@ signal.signal(signal.SIGINT, sigint_handler)
 signal.signal(signal.SIGTERM, handler)
 
 def main():
-	arg_parser = argparse.ArgumentParser(description="Async processor")
-	arg_parser.add_argument('-v', '--verbose', help="Be verbose", action='store_true',
-							 dest='verbose')
-	arg_parser.add_argument('-l', '--library', help="Load library packages", action='store_true',
-							 dest='library')
-	arg_parser.add_argument('-n', '--name', help="Queue name", default='', dest='name')
-
+	arg_parser = create_arg_parser()
 	args = arg_parser.parse_args()
 	env_dir = os.getenv('DATASERVER_DIR')
 	if not env_dir or not os.path.exists(env_dir) and not os.path.isdir(env_dir):
 		raise IOError("Invalid dataserver environment root directory")
 
-	context = _create_context(env_dir)
+	context = create_context(env_dir)
 	conf_packages = ('nti.appserver', 'nti.async')
 	run_with_dataserver(environment_dir=env_dir,
 						xmlconfig_packages=conf_packages,
@@ -61,7 +55,16 @@ def main():
 						minimal_ds=True,
 						function=lambda: _process_args(args))
 
-def _create_context(env_dir):
+def create_arg_parser():
+	arg_parser = argparse.ArgumentParser(description="Async processor")
+	arg_parser.add_argument('-v', '--verbose', help="Be verbose", action='store_true',
+							 dest='verbose')
+	arg_parser.add_argument('-l', '--library', help="Load library packages", action='store_true',
+							 dest='library')
+	arg_parser.add_argument('-n', '--name', help="Queue name", default='', dest='name')
+	return arg_parser
+
+def create_context(env_dir):
 	env_dir = os.path.expanduser(env_dir)
 	etc = os.getenv('DATASERVER_ETC_DIR') or os.path.join(env_dir, 'etc')
 	etc = os.path.expanduser(etc)
