@@ -30,15 +30,15 @@ from nti.dataserver.utils import run_with_dataserver
 
 from nti.async import reactor
 
+def handler(*args):
+	raise SystemExit()
+
 def sigint_handler(*args):
 	logger.info("Shutting down %s", os.getpid())
 	sys.exit(0)
 
-def handler(*args):
-	raise SystemExit()
-
-signal.signal(signal.SIGINT, sigint_handler)
 signal.signal(signal.SIGTERM, handler)
+signal.signal(signal.SIGINT, sigint_handler)
 
 class Processor(object):
 
@@ -54,7 +54,7 @@ class Processor(object):
 								dest='name')
 		return arg_parser
 
-	def create_context(self, env_dir=None):
+	def create_context(self, env_dir):
 		etc = os.getenv('DATASERVER_ETC_DIR') or os.path.join(env_dir, 'etc')
 		etc = os.path.expanduser(etc)
 
