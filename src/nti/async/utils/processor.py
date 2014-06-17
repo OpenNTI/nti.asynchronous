@@ -108,7 +108,7 @@ class Processor(object):
 							verbose=args.verbose,
 							context=context,
 							minimal_ds=True,
-							function=lambda: self._process_args(args))
+							function=lambda: self.process_args(args))
 
 def main():
 	return Processor()()

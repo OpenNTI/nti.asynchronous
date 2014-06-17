@@ -51,19 +51,19 @@ class AsyncReactor(object):
 			self.processor = self._spawn_job_processor()
 
 	def execute_job(self):
-		self.currentJob = job = self.queue().claim()
+		self.currentJob = job = self.queue.claim()
 		if job is None:
 			return False
 
 		job()
 		if job.hasFailed:
 			logger.error("job %r failed", job)
-			self.queue().putFailed(job)
+			self.queue.putFailed(job)
 		logger.debug("job %r has been executed", job)
 
 		return True
 	
-	def process_job(self, pid):
+	def process_job(self):
 		transaction_runner = \
 				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
 
@@ -92,7 +92,7 @@ class AsyncReactor(object):
 			while not self.stop:
 				try:
 					sleep(self.poll_inteval)
-					if not self.stop and not self.process_job(self.pid):
+					if not self.stop and not self.process_job():
 						self.stop = True
 				except KeyboardInterrupt:
 					break
