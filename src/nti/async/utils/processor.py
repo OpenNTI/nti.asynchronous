@@ -83,11 +83,11 @@ class Processor(object):
 	def process_args(self, args):
 		self.set_log_formatter(args)
 
-		if args.library:
+		if getattr(args, 'library', False):
 			library = component.queryUtility(lib_interfaces.IContentPackageLibrary)
 			getattr(library, 'contentPackages')
 
-		name = args.name or u''
+		name = getattr(args, 'name', None) or u''
 		target = reactor.AsyncReactor(name=name)
 		result = target(time.sleep)
 		sys.exit(result)
