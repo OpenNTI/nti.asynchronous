@@ -52,6 +52,7 @@ class Processor(object):
 								action='store_true', dest='library')
 		arg_parser.add_argument('-n', '--name', help="Queue name", default='',
 								dest='name')
+		arg_parser.add_argument('--site', dest='site', help="request SITE")
 		return arg_parser
 
 	def create_context(self, env_dir):
@@ -80,7 +81,25 @@ class Processor(object):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
 		logging.root.handlers[0].setFormatter(zope.exceptions.log.Formatter(ei))
 
+	def setup_site(self, args):
+		site = getattr(args, 'site', None)
+		if site:
+			from pyramid.testing import DummyRequest
+			from pyramid.testing import setUp as psetUp
+
+			request = DummyRequest()
+			config = psetUp(registry=component.getGlobalSiteManager(),
+							request=request,
+							hook_zca=False)
+			config.setup_registry()
+			request.headers['origin'] = \
+							'http://' + site if not site.startswith('http') else site
+			# zope_site_tween tweaks some things on the request that we need to as well
+			request.possible_site_names = \
+					(site if not site.startswith('http') else site[7:],)
+
 	def process_args(self, args):
+		self.setup_site(args)
 		self.set_log_formatter(args)
 
 		if getattr(args, 'library', False):
