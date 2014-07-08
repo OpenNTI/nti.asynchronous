@@ -17,7 +17,7 @@ from zope.component import ComponentLookupError
 
 from ZODB.POSException import ConflictError
 
-from nti.dataserver import interfaces as nti_interfaces
+from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.utils.property import Lazy
 
@@ -31,7 +31,7 @@ class AsyncReactor(object):
 	processor = None
 	currentJob = None
 
-	def __init__(self, name=u'', poll_inteval=2, exitOnError=False):
+	def __init__(self, name=u'', poll_inteval=2, exitOnError=True):
 		self.name = name
 		self.exitOnError = exitOnError
 		self.poll_inteval = poll_inteval
@@ -66,9 +66,7 @@ class AsyncReactor(object):
 		return True
 	
 	def process_job(self):
-		transaction_runner = \
-				component.getUtility(nti_interfaces.IDataserverTransactionRunner)
-
+		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		result = True
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):

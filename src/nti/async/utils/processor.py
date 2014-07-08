@@ -24,7 +24,7 @@ from zope import component
 from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
 
-from nti.contentlibrary import interfaces as lib_interfaces
+from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from nti.dataserver.utils import run_with_dataserver
 
@@ -103,8 +103,8 @@ class Processor(object):
 		self.set_log_formatter(args)
 
 		if getattr(args, 'library', False):
-			library = component.queryUtility(lib_interfaces.IContentPackageLibrary)
-			getattr(library, 'contentPackages')
+			library = component.queryUtility(IContentPackageLibrary)
+			getattr(library, 'contentPackages', None)
 
 		name = getattr(args, 'name', None) or u''
 		target = reactor.AsyncReactor(name=name)
