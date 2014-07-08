@@ -13,6 +13,7 @@ import random
 
 from zope import component
 from zope import interface
+from zope.component import ComponentLookupError
 
 from ZODB.POSException import ConflictError
 
@@ -20,9 +21,10 @@ from nti.dataserver import interfaces as nti_interfaces
 
 from nti.utils.property import Lazy
 
-from . import interfaces as async_interfaces
+from .interfaces import IQueue
+from .interfaces import IAsyncReactor
 
-@interface.implementer(async_interfaces.IAsyncReactor)
+@interface.implementer(IAsyncReactor)
 class AsyncReactor(object):
 
 	stop = False
@@ -36,7 +38,7 @@ class AsyncReactor(object):
 
 	@Lazy
 	def queue(self):
-		queue = component.getUtility(async_interfaces.IQueue, name=self.name)
+		queue = component.getUtility(IQueue, name=self.name)
 		return queue
 
 	def halt(self):
@@ -74,12 +76,12 @@ class AsyncReactor(object):
 			else:
 				self.poll_inteval += random.uniform(1, 5)
 				self.poll_inteval = min(self.poll_inteval, 60)
-		except (component.ComponentLookupError, AttributeError), e:
+		except (ComponentLookupError, AttributeError, TypeError, StandardError), e:
 			logger.error('Error while processing job. Queue=(%s), error=%s', self.name, e)
 			result = False
 		except ConflictError:
 			logger.error('ConflictError while pulling job from Queue=(%s)', self.name)
-		except Exception:
+		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.name)
 			result = not self.exitOnError
 		return result
