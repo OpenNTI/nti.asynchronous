@@ -21,12 +21,17 @@ import argparse
 import zope.exceptions
 
 from zope import component
+from zope.component.hooks import getSite
+from zope.component.hooks import setSite
+from zope.component.hooks import clearSite
 from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
 
 from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from nti.dataserver.utils import run_with_dataserver
+
+from nti.site.site import get_site_for_site_names
 
 from nti.async import reactor
 
@@ -81,6 +86,12 @@ class Processor(object):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
 		logging.root.handlers[0].setFormatter(zope.exceptions.log.Formatter(ei))
 
+	def find_site(self, request):
+		parent_site = getSite()
+		site_names = request.possible_site_names
+		found_site = get_site_for_site_names(site_names, site=parent_site)
+		return found_site
+	
 	def setup_site(self, args):
 		site = getattr(args, 'site', None)
 		if site:
@@ -94,22 +105,28 @@ class Processor(object):
 			config.setup_registry()
 			request.headers['origin'] = \
 							'http://' + site if not site.startswith('http') else site
-			# zope_site_tween tweaks some things on the request that we need to as well
 			request.possible_site_names = \
 					(site if not site.startswith('http') else site[7:],)
+			
+			site = self.find_site(request)
+			setSite(site)
+			return site
 
 	def process_args(self, args):
-		self.setup_site(args)
 		self.set_log_formatter(args)
-
 		if getattr(args, 'library', False):
 			library = component.queryUtility(IContentPackageLibrary)
 			getattr(library, 'contentPackages', None)
 
+		site = self.setup_site(args)
 		name = getattr(args, 'name', None) or u''
-		target = reactor.AsyncReactor(name=name)
-		result = target(time.sleep)
-		sys.exit(result)
+		try:
+			target = reactor.AsyncReactor(name=name)
+			result = target(time.sleep)
+		finally:
+			if site is not None:
+				clearSite(site)
+			sys.exit(result)
 		
 	def __call__(self, *args, **kwargs):
 		arg_parser = self.create_arg_parser()
