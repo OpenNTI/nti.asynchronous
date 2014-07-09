@@ -83,3 +83,8 @@ class TestQueue(AsyncTestCase):
 
 		assert_that(queue.put(first), equal_to(first))
 		assert_that(queue.put(last), equal_to(last))
+		
+		assert_that( queue, has_length( 2 ) )
+		emptied = queue.empty()
+		assert_that( queue, has_length( 0 ) )
+		assert_that( emptied, is_( 2 ) )

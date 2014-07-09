@@ -94,7 +94,7 @@ class Queue(Persistent, zcontained.Contained):
 
 	def empty(self):
 		result = 0
-		while not self._length():
+		while self._length():
 			self.claim()
 			result += 1
 		return result
