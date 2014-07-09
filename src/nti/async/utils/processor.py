@@ -108,9 +108,12 @@ class Processor(object):
 			request.possible_site_names = \
 					(site if not site.startswith('http') else site[7:],)
 			
-			site = self.find_site(request)
-			setSite(site)
-			return site
+			site_to_set = self.find_site(request)
+			if site_to_set is not None:
+				setSite(site_to_set)
+			else:
+				raise ValueError("Invalid site %s" % site)
+			return site_to_set
 
 	def process_args(self, args):
 		self.set_log_formatter(args)
