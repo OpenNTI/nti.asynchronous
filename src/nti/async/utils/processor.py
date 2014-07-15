@@ -52,6 +52,8 @@ class Processor(object):
 								action='store_true', dest='library')
 		arg_parser.add_argument('-n', '--name', help="Queue name", default='',
 								dest='name')
+		arg_parser.add_argument('--no_sleep', help="Whether to sleep between jobs",
+								 default=True, dest='to_sleep',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
 		return arg_parser
 
@@ -107,10 +109,11 @@ class Processor(object):
 			getattr(library, 'contentPackages', None)
 
 		name = getattr(args, 'name', None) or u''
-		target = reactor.AsyncReactor(name=name)
+		to_sleep = getattr(args, 'to_sleep', True)
+		target = reactor.AsyncReactor(name=name, to_sleep=to_sleep)
 		result = target(time.sleep)
 		sys.exit(result)
-		
+
 	def __call__(self, *args, **kwargs):
 		arg_parser = self.create_arg_parser()
 		args = arg_parser.parse_args()

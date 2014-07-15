@@ -31,10 +31,11 @@ class AsyncReactor(object):
 	processor = None
 	currentJob = None
 
-	def __init__(self, name=u'', poll_inteval=2, exitOnError=True):
+	def __init__(self, name=u'', to_sleep=True, poll_inteval=2, exitOnError=True):
 		self.name = name
 		self.exitOnError = exitOnError
 		self.poll_inteval = poll_inteval
+		self.to_sleep = to_sleep
 
 	@Lazy
 	def queue(self):
@@ -57,6 +58,7 @@ class AsyncReactor(object):
 		if job is None:
 			return False
 
+		logger.debug("Executing job (%s)", job)
 		job()
 		if job.hasFailed:
 			logger.error("job %r failed", job)
@@ -64,7 +66,7 @@ class AsyncReactor(object):
 		logger.debug("job %r has been executed", job)
 
 		return True
-	
+
 	def process_job(self):
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		result = True
@@ -88,10 +90,13 @@ class AsyncReactor(object):
 		random.seed()
 		self.stop = False
 		try:
-			logger.info('Starting reactor for Queue=(%s)', self.name)
+			logger.info('Starting reactor for Queue=(%s) (sleeping=%s)',
+						self.name, self.to_sleep )
 			while not self.stop:
 				try:
-					sleep(self.poll_inteval)
+					if self.to_sleep:
+						logger.info( 'Sleeping for %s seconds', self.poll_inteval )
+						sleep(self.poll_inteval)
 					if not self.stop and not self.process_job():
 						self.stop = True
 				except KeyboardInterrupt:
