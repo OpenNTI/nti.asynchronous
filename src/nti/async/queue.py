@@ -19,9 +19,10 @@ from zc.queue import CompositeQueue
 
 from persistent import Persistent
 
-from . import interfaces as async_interfaces
+from .interfaces import IJob
+from .interfaces import IQueue
 
-@interface.implementer(async_interfaces.IQueue)
+@interface.implementer(IQueue)
 class Queue(Persistent, zcontained.Contained):
 
 	_failed_jobs = None
@@ -31,7 +32,7 @@ class Queue(Persistent, zcontained.Contained):
 		self._length = BTrees.Length.Length(0)
 
 	def put(self, item):
-		item = async_interfaces.IJob(item)
+		item = IJob(item)
 		self._queue.put(item)
 		item.__parent__ = self
 		self._length.change(1)
@@ -102,7 +103,7 @@ class Queue(Persistent, zcontained.Contained):
 	def putFailed(self, item):
 		if self._failed_jobs is None:
 			self._failed_jobs = BList()
-		item = async_interfaces.IJob(item)
+		item = IJob(item)
 		self._failed_jobs.append(item)
 	put_failed = putFailed
 

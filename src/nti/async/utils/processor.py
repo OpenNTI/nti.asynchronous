@@ -28,7 +28,7 @@ from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from nti.dataserver.utils import run_with_dataserver
 
-from nti.async import reactor
+from nti.async.reactor import AsyncReactor
 
 def handler(*args):
 	raise SystemExit()
@@ -110,7 +110,7 @@ class Processor(object):
 
 		name = getattr(args, 'name', None) or u''
 		to_sleep = getattr(args, 'to_sleep', True)
-		target = reactor.AsyncReactor(name=name, to_sleep=to_sleep)
+		target = AsyncReactor(name=name, to_sleep=to_sleep)
 		result = target(time.sleep)
 		sys.exit(result)
 

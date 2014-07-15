@@ -7,15 +7,15 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 __docformat__ = "restructuredtext en"
 
 from zope import interface
-from zope.location import interfaces as loc_interfaces
-from zope.annotation import interfaces as an_interfaces
+from zope.location.interfaces import IContained
+from zope.annotation.interfaces import IAttributeAnnotatable
 
 NEW = u'New'
 FAILED = u'Failed'
 ACTIVE = u'Active'
 COMPLETED = u'Completed'
 
-class IQueue(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
+class IQueue(IAttributeAnnotatable, IContained):
 
 	def put(item):
 		"""
@@ -46,7 +46,7 @@ class IQueue(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
 		Stores a failed job for review
 		"""
 
-class IJob(an_interfaces.IAttributeAnnotatable, loc_interfaces.IContained):
+class IJob(IAttributeAnnotatable, IContained):
 
 	result = interface.Attribute("""The result of the call. """)
 

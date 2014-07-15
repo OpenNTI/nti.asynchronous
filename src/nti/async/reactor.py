@@ -33,9 +33,9 @@ class AsyncReactor(object):
 
 	def __init__(self, name=u'', to_sleep=True, poll_inteval=2, exitOnError=True):
 		self.name = name
+		self.to_sleep = to_sleep
 		self.exitOnError = exitOnError
 		self.poll_inteval = poll_inteval
-		self.to_sleep = to_sleep
 
 	@Lazy
 	def queue(self):

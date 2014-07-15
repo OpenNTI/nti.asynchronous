@@ -20,28 +20,33 @@ from zc.blist import BList
 from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
-from .utils import custom_repr
-from . import interfaces as async_interfaces
+from .interfaces import NEW
+from .interfaces import ACTIVE
+from .interfaces import FAILED
+from .interfaces import COMPLETED
 
-NEW = 0
-ACTIVE = 1
-FAILED = 3
-COMPLETED = 2
+from .interfaces import IJob
+from .utils import custom_repr
+
+NEW_ID = 0
+ACTIVE_ID = 1
+FAILED_ID = 3
+COMPLETED_ID = 2
 
 _status_mapping = {
-	NEW : async_interfaces.NEW,
-	ACTIVE: async_interfaces.ACTIVE,
-	COMPLETED: async_interfaces.COMPLETED,
-	FAILED: async_interfaces.FAILED}
+	NEW_ID : NEW,
+	ACTIVE_ID: ACTIVE,
+	FAILED_ID: FAILED,
+	COMPLETED_ID: COMPLETED}
 
-@interface.implementer(async_interfaces.IJob)
+@interface.implementer(IJob)
 class Job(Persistent, zcontained.Contained):
 
 	_active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
 
 	def __init__(self, *args, **kwargs):
-		self._status_id = NEW
+		self._status_id = NEW_ID
 		self.args = BList(args)
 		self.callable = self.args.pop(0)
 		self.kwargs = PersistentMapping(kwargs)
@@ -60,12 +65,12 @@ class Job(Persistent, zcontained.Contained):
 
 	@property
 	def has_failed(self):
-		return self._status_id == FAILED
+		return self._status_id == FAILED_ID
 	hasFailed = has_failed
 
 	@property
 	def is_success(self):
-		return self._status_id == COMPLETED
+		return self._status_id == COMPLETED_ID
 
 	def _get_callable(self):
 		if self._callable_name is None:
@@ -84,7 +89,7 @@ class Job(Persistent, zcontained.Contained):
 		else:
 			self._callable_root, self._callable_name = value, None
 
-		if (async_interfaces.IJob.providedBy(self._callable_root) and
+		if (IJob.providedBy(self._callable_root) and
 			self._callable_root.__parent__ is None):
 			self._callable_root.__parent__ = self
 
@@ -99,14 +104,14 @@ class Job(Persistent, zcontained.Contained):
 		__traceback_info__ = self._callable_root, self._callable_name, \
 							 effective_args, effective_kwargs
 		try:
-			self._status_id = ACTIVE
+			self._status_id = ACTIVE_ID
 			result = self.callable(*effective_args, **effective_kwargs)
-			self._status_id = COMPLETED
+			self._status_id = COMPLETED_ID
 			self._result = result
 			return result
 		except Exception, e:
 			self._result = e
-			self._status_id = FAILED
+			self._status_id = FAILED_ID
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.now(pytz.UTC)
