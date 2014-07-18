@@ -54,6 +54,8 @@ class Processor(object):
 								dest='name')
 		arg_parser.add_argument('--no_sleep', help="Whether to sleep between jobs",
 								 default=True, dest='to_sleep',action='store_false')
+		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
+								 default=True, dest='exit_error',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
 		return arg_parser
 
@@ -110,7 +112,8 @@ class Processor(object):
 
 		name = getattr(args, 'name', None) or u''
 		to_sleep = getattr(args, 'to_sleep', True)
-		target = AsyncReactor(name=name, to_sleep=to_sleep)
+		exit_on_error = getattr(args, 'exit_error', True)
+		target = AsyncReactor(name=name, to_sleep=to_sleep, exitOnError=exit_on_error)
 		result = target(time.sleep)
 		sys.exit(result)
 

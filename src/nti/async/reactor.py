@@ -53,8 +53,11 @@ class AsyncReactor(object):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
 
+	def _pull_job(self):
+		self.currentJob = self.queue.claim()
+
 	def execute_job(self):
-		self.currentJob = job = self.queue.claim()
+		job = self.currentJob
 		if job is None:
 			return False
 
@@ -70,6 +73,9 @@ class AsyncReactor(object):
 	def process_job(self):
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		result = True
+
+		# Need to have our own transaction to pull jobs (else we'll never claim a job that errs out).
+		transaction_runner(self._pull_job)
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				self.poll_inteval = random.random() * 1.5
