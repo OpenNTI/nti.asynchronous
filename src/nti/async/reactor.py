@@ -75,7 +75,7 @@ class AsyncReactor(object):
 		result = True
 
 		# Need to have our own transaction to pull jobs (else we'll never claim a job that errs out).
-		transaction_runner(self._pull_job())
+		transaction_runner(self._pull_job)
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				self.poll_inteval = random.random() * 1.5
