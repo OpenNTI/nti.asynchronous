@@ -11,7 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 import BTrees
 
 from zope import interface
-from zope.container import contained as zcontained
+from zope.container.contained import Contained
 
 from zc.blist import BList
 
@@ -23,14 +23,17 @@ from .interfaces import IJob
 from .interfaces import IQueue
 
 @interface.implementer(IQueue)
-class Queue(Persistent, zcontained.Contained):
+class Queue(Contained, Persistent):
 
-	_failed_jobs = None
+	_queue = _length = _failed_jobs = None
 
 	def __init__(self):
+		self._reset()
+
+	def _reset(self):
 		self._queue = CompositeQueue()
 		self._length = BTrees.Length.Length(0)
-
+		
 	def put(self, item):
 		item = IJob(item)
 		self._queue.put(item)

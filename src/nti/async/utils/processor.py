@@ -21,8 +21,11 @@ import argparse
 import zope.exceptions
 
 from zope import component
+from zope.container.contained import Contained
 from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
+
+from z3c.autoinclude.zcml import includePluginsDirective
 
 from nti.contentlibrary.interfaces import IContentPackageLibrary
 
@@ -39,6 +42,15 @@ def sigint_handler(*args):
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, sigint_handler)
+
+class PluginPoint(Contained):
+
+	def __init__(self, name):
+		self.__name__ = name
+
+PP_APP = PluginPoint('nti.app')
+PP_APP_SITES = PluginPoint('nti.app.sites')
+PP_APP_PRODUCTS = PluginPoint('nti.app.products')
 
 class Processor(object):
 
@@ -78,6 +90,11 @@ class Processor(object):
 			raise Exception("Could not locate library zcml file %s", library_zcml)
 
 		xmlconfig.include(context, file=library_zcml, package=self.conf_package)
+
+		# include plugins
+		includePluginsDirective(context, PP_APP)
+		includePluginsDirective(context, PP_APP_SITES)
+		includePluginsDirective(context, PP_APP_PRODUCTS)
 
 		return context
 

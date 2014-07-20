@@ -8,12 +8,11 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-import pytz
 import types
 import datetime
 
 from zope import interface
-from zope.container import contained as zcontained
+from zope.container.contained import Contained
 
 from zc.blist import BList
 
@@ -40,7 +39,7 @@ _status_mapping = {
 	COMPLETED_ID: COMPLETED}
 
 @interface.implementer(IJob)
-class Job(Persistent, zcontained.Contained):
+class Job(Contained, Persistent):
 
 	_active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
@@ -96,7 +95,7 @@ class Job(Persistent, zcontained.Contained):
 	callable = property (_get_callable, _set_callable)
 
 	def __call__(self, *args, **kwargs):
-		self._active_start = datetime.datetime.now(pytz.UTC)
+		self._active_start = datetime.datetime.utcnow()
 		effective_args = list(args)
 		effective_args[0:0] = self.args
 		effective_kwargs = dict(self.kwargs)
@@ -114,7 +113,7 @@ class Job(Persistent, zcontained.Contained):
 			self._status_id = FAILED_ID
 			logger.exception("Job execution failed")
 		finally:
-			self._active_end = datetime.datetime.now(pytz.UTC)
+			self._active_end = datetime.datetime.utcnow()
 			
 	def __repr__(self):
 		try:
