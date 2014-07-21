@@ -91,10 +91,12 @@ class Processor(object):
 
 		xmlconfig.include(context, file=library_zcml, package=self.conf_package)
 
+		#TODO: Include context <include package="zope.browserpage" file="meta.zcml" /> <!-- tales:expressiontype -->
+		
 		# include plugins
 		includePluginsDirective(context, PP_APP)
 		includePluginsDirective(context, PP_APP_SITES)
-		includePluginsDirective(context, PP_APP_PRODUCTS)
+		#includePluginsDirective(context, PP_APP_PRODUCTS)
 
 		return context
 
