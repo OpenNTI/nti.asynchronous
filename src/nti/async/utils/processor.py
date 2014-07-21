@@ -19,11 +19,12 @@ import logging
 import argparse
 
 import zope.exceptions
+import zope.browserpage
 
 from zope import component
 from zope.container.contained import Contained
-from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
+from zope.configuration import xmlconfig, config
 
 from z3c.autoinclude.zcml import includePluginsDirective
 
@@ -91,12 +92,13 @@ class Processor(object):
 
 		xmlconfig.include(context, file=library_zcml, package=self.conf_package)
 
-		#TODO: Include context <include package="zope.browserpage" file="meta.zcml" /> <!-- tales:expressiontype -->
+		# Include zope.browserpage.meta.zcm for  tales:expressiontype
+		xmlconfig.include(context, file="meta.zcml", package=zope.browserpage)
 		
 		# include plugins
 		includePluginsDirective(context, PP_APP)
 		includePluginsDirective(context, PP_APP_SITES)
-		#includePluginsDirective(context, PP_APP_PRODUCTS)
+		includePluginsDirective(context, PP_APP_PRODUCTS)
 
 		return context
 
