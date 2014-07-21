@@ -23,8 +23,8 @@ import zope.browserpage
 
 from zope import component
 from zope.container.contained import Contained
-from zope.dottedname import resolve as dottedname
 from zope.configuration import xmlconfig, config
+from zope.dottedname import resolve as dottedname
 
 from z3c.autoinclude.zcml import includePluginsDirective
 
@@ -92,7 +92,8 @@ class Processor(object):
 
 		xmlconfig.include(context, file=library_zcml, package=self.conf_package)
 
-		# Include zope.browserpage.meta.zcm for  tales:expressiontype
+		# Include zope.browserpage.meta.zcm for tales:expressiontype
+		# before including the products
 		xmlconfig.include(context, file="meta.zcml", package=zope.browserpage)
 		
 		# include plugins
