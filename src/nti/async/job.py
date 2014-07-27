@@ -76,7 +76,7 @@ class Job(Contained, Persistent):
 			return self._callable_root
 		else:
 			return getattr(self._callable_root, self._callable_name)
-	
+
 	def _set_callable(self, value):
 		if isinstance(value, types.MethodType):
 			self._callable_root = value.im_self
@@ -109,12 +109,11 @@ class Job(Contained, Persistent):
 			self._result = result
 			return result
 		except Exception, e:
-			self._result = e
 			self._status_id = FAILED_ID
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
-			
+
 	def __repr__(self):
 		try:
 			call = custom_repr(self._callable_root)
