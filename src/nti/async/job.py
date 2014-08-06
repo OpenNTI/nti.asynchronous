@@ -108,7 +108,7 @@ class Job(Contained, Persistent):
 			self._status_id = COMPLETED_ID
 			self._result = result
 			return result
-		except Exception, e:
+		except Exception:
 			self._status_id = FAILED_ID
 			logger.exception("Job execution failed")
 		finally:
