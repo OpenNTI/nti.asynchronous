@@ -53,11 +53,8 @@ class AsyncReactor(object):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
 
-	def _pull_job(self):
-		self.currentJob = self.queue.claim()
-
 	def execute_job(self):
-		job = self.currentJob
+		job = self.queue.claim()
 		if job is None:
 			return False
 
@@ -74,27 +71,20 @@ class AsyncReactor(object):
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		result = True
 
-		# Need to have our own transaction to pull jobs (else we'll never claim a job that errs out).
-		transaction_runner(self._pull_job)
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				self.poll_inteval = random.random() * 1.5
 			else:
 				self.poll_inteval += random.uniform(1, 5)
 				self.poll_inteval = min(self.poll_inteval, 60)
+		except (ComponentLookupError, AttributeError, TypeError, StandardError), e:
+			logger.error('Error while processing job. Queue=(%s), error=%s', self.name, e)
+			result = False
 		except ConflictError:
 			logger.error('ConflictError while pulling job from Queue=(%s)', self.name)
-		except Exception as e:
-			logger.error('Error while processing job. Queue=(%s), error=%s', self.name, e)
-			# TODO It would be nice to capture error (as json)
-			self.queue.putFailed( self.currentJob )
-			# If we exit on error, we could perhaps put the job back on our
-			# main queue, which may run succesfully once a bug is fixed.
-			result = not self.exitOnError
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.name)
-			# Something bad happened, shutdown time.
-			result = False
+			result = not self.exitOnError
 		return result
 
 	def run(self, sleep=gevent.sleep):
