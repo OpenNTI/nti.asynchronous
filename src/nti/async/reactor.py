@@ -82,14 +82,19 @@ class AsyncReactor(object):
 			else:
 				self.poll_inteval += random.uniform(1, 5)
 				self.poll_inteval = min(self.poll_inteval, 60)
-		except (ComponentLookupError, AttributeError, TypeError, StandardError), e:
-			logger.error('Error while processing job. Queue=(%s), error=%s', self.name, e)
-			result = False
 		except ConflictError:
 			logger.error('ConflictError while pulling job from Queue=(%s)', self.name)
+		except Exception as e:
+			logger.error('Error while processing job. Queue=(%s), error=%s', self.name, e)
+			# TODO It would be nice to capture error (as json)
+			self.queue.putFailed( self.currentJob )
+			# If we exit on error, we could perhaps put the job back on our
+			# main queue, which may run succesfully once a bug is fixed.
+			result = not self.exitOnError
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.name)
-			result = not self.exitOnError
+			# Something bad happened, shutdown time.
+			result = False
 		return result
 
 	def run(self, sleep=gevent.sleep):
