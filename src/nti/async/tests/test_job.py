@@ -8,12 +8,15 @@ __docformat__ = "restructuredtext en"
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
+from hamcrest import none
+from hamcrest import is_not
 from hamcrest import assert_that
 from hamcrest import has_property
 
 import persistent
 
 from nti.async.job import Job
+from nti.async.interfaces import IError
 
 from nti.async.tests import AsyncTestCase
 
@@ -64,3 +67,9 @@ class TestJob(AsyncTestCase):
 		job = Job(multiply, 5, None)
 		job()
 		assert_that(job, has_property('has_failed', is_(True)))
+
+	def test_error(self):
+		e = Exception('error')
+		error = IError(e)
+		assert_that(error, is_not(none()))
+		assert_that(error, has_property('message', 'error'))

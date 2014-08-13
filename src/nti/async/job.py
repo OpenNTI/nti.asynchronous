@@ -24,8 +24,10 @@ from .interfaces import ACTIVE
 from .interfaces import FAILED
 from .interfaces import COMPLETED
 
-from .interfaces import IJob
 from .utils import custom_repr
+
+from .interfaces import IJob
+from .interfaces import IError
 
 NEW_ID = 0
 ACTIVE_ID = 1
@@ -41,15 +43,18 @@ _status_mapping = {
 @interface.implementer(IJob)
 class Job(Contained, Persistent):
 
+	_error = None
 	_active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
 
+	error_adapter = IError
+	
 	def __init__(self, *args, **kwargs):
 		self._status_id = NEW_ID
 		self.args = BList(args)
 		self.callable = self.args.pop(0)
 		self.kwargs = PersistentMapping(kwargs)
-
+	
 	@property
 	def queue(self):
 		return self.__parent__
@@ -62,6 +67,10 @@ class Job(Contained, Persistent):
 	def status(self):
 		return _status_mapping[self._status_id]
 
+	@property
+	def error(self):
+		return self._error
+	
 	@property
 	def has_failed(self):
 		return self._status_id == FAILED_ID
@@ -108,8 +117,9 @@ class Job(Contained, Persistent):
 			self._status_id = COMPLETED_ID
 			self._result = result
 			return result
-		except Exception:
+		except Exception, e:
 			self._status_id = FAILED_ID
+			self._error = self.error_adapter(e, None)
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
@@ -132,3 +142,31 @@ class Job(Contained, Persistent):
 		except (TypeError, ValueError, AttributeError):
 			# broken reprs are a bad idea; they obscure problems
 			return super(Job, self).__repr__()
+		
+@interface.implementer(IError)
+class Error(Contained, Persistent):
+	
+	def __init__(self, message=u''):
+		Persistent.__init__(self)
+		self.message = message
+		
+	def __str__(self):
+		return self.message
+	
+	def __repr__(self):
+		return "%s,%s" % (self.__class__.__name__, self.message)
+
+	def __eq__(self, other):
+		try:
+			return self is other or (self.message == other.message)
+		except AttributeError:
+			return NotImplemented
+
+	def __hash__(self):
+		xhash = 47
+		xhash ^= hash(self.message)
+		return xhash
+
+@interface.implementer(IError)
+def _default_error_adapter(e):
+	return Error(e.message)

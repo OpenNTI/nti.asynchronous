@@ -15,6 +15,9 @@ FAILED = u'Failed'
 ACTIVE = u'Active'
 COMPLETED = u'Completed'
 
+class IError(interface.Interface):
+	message = interface.Attribute("""Error message""")
+	
 class IQueue(IAttributeAnnotatable, IContained):
 
 	def put(item):
@@ -48,6 +51,8 @@ class IQueue(IAttributeAnnotatable, IContained):
 
 class IJob(IAttributeAnnotatable, IContained):
 
+	error =  interface.Attribute("""Any job execution error.""")
+	
 	result = interface.Attribute("""The result of the call. """)
 
 	callable = interface.Attribute(

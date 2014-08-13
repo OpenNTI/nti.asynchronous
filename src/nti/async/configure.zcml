@@ -16,5 +16,9 @@
 			 for="types.MethodType"
 			 provides=".interfaces.IJob" />
 			 
+	<adapter factory=".job._default_error_adapter"
+			 for="exceptions.Exception"
+			 provides=".interfaces.IError" />
+			 
 	<configure zcml:condition="have devmode" />
 </configure>
