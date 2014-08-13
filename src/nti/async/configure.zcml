@@ -20,5 +20,9 @@
 			 for="exceptions.Exception"
 			 provides=".interfaces.IError" />
 			 
+	<adapter factory=".job._default_exc_info"
+			 for="tuple"
+			 provides=".interfaces.IError" />
+			 
 	<configure zcml:condition="have devmode" />
 </configure>

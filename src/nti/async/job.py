@@ -8,11 +8,13 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import sys
 import types
 import datetime
 
 from zope import interface
 from zope.container.contained import Contained
+from zope.exceptions.exceptionformatter import format_exception
 
 from zc.blist import BList
 
@@ -119,7 +121,8 @@ class Job(Contained, Persistent):
 			return result
 		except Exception, e:
 			self._status_id = FAILED_ID
-			self._error = self.error_adapter(e, None)
+			self._error = self.error_adapter(sys.exc_info(), None) or \
+						  self.error_adapter(e, None)
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
@@ -170,3 +173,14 @@ class Error(Contained, Persistent):
 @interface.implementer(IError)
 def _default_error_adapter(e):
 	return Error(e.message)
+
+@interface.implementer(IError)
+def _default_exc_info(exc_info):
+	t, v, tb = exc_info
+	lines = format_exception(t, v, tb, with_filenames=True)
+	if isinstance(str(''), bytes):
+		lines = [l.encode('utf-8','replace') if isinstance(l, unicode) else l for l in lines]
+	else:
+		lines = [l.decode('utf-8','replace') if isinstance(l, bytes) else l for l in lines]
+	message = str('').join( lines )
+	return Error(message)

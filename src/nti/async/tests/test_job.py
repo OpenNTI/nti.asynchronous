@@ -10,9 +10,12 @@ __docformat__ = "restructuredtext en"
 from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
+from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_property
+from hamcrest import greater_than
 
+import sys
 import persistent
 
 from nti.async.job import Job
@@ -73,3 +76,11 @@ class TestJob(AsyncTestCase):
 		error = IError(e)
 		assert_that(error, is_not(none()))
 		assert_that(error, has_property('message', 'error'))
+		
+		try:
+			raise Exception()
+		except:
+			error = IError(sys.exc_info())
+		assert_that(error, is_not(none()))
+		assert_that(error, has_property('message', has_length(greater_than(1))))
+
