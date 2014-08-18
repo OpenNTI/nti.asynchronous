@@ -27,12 +27,12 @@ class Queue(Contained, Persistent):
 
 	_queue = _length = _failed_jobs = None
 
-	def __init__(self):
-		self._reset()
+	def __init__(self, compositeSize=4093):
+		self._reset(compositeSize)
 
-	def _reset(self):
-		self._queue = CompositeQueue()
+	def _reset(self, compositeSize=4093):
 		self._length = BTrees.Length.Length(0)
+		self._queue = CompositeQueue(compositeSize=compositeSize)
 		
 	def put(self, item):
 		item = IJob(item)
