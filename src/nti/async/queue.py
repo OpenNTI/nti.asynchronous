@@ -97,10 +97,9 @@ class Queue(Contained, Persistent):
 		return default
 
 	def empty(self):
-		result = 0
-		while self._length():
-			self.claim()
-			result += 1
+		result = self._length()
+		if result:
+			self._reset()
 		return result
 
 	def putFailed(self, item):
