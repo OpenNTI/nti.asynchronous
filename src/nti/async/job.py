@@ -16,10 +16,7 @@ from zope import interface
 from zope.container.contained import Contained
 from zope.exceptions.exceptionformatter import format_exception
 
-from zc.blist import BList
-
 from persistent import Persistent
-from persistent.mapping import PersistentMapping
 
 from .interfaces import NEW
 from .interfaces import ACTIVE
@@ -53,10 +50,14 @@ class Job(Contained, Persistent):
 	
 	def __init__(self, *args, **kwargs):
 		self._status_id = NEW_ID
-		self.args = BList(args)
-		self.callable = self.args.pop(0)
-		self.kwargs = PersistentMapping(kwargs)
+		self._reset(*args, **kwargs)
 	
+	def _reset(self, *args, **kwargs):
+		_tmpargs = list(args)
+		self.kwargs = dict(kwargs)
+		self.callable = _tmpargs.pop(0)
+		self.args = tuple(_tmpargs)
+		
 	@property
 	def queue(self):
 		return self.__parent__
@@ -127,6 +128,16 @@ class Job(Contained, Persistent):
 		finally:
 			self._active_end = datetime.datetime.utcnow()
 
+	def __hash__(self):
+		xhash = 47
+		try:
+			xhash ^= hash(self.args)
+			xhash ^= hash(self.kwargs)
+			xhash ^= hash(self.callable)
+		except TypeError:
+			xhash ^= hash(self.callable)
+		return xhash
+	
 	def __repr__(self):
 		try:
 			call = custom_repr(self._callable_root)
