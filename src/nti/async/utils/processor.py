@@ -65,8 +65,8 @@ class Processor(object):
 								action='store_true', dest='library')
 		arg_parser.add_argument('-n', '--name', help="Queue name", default='',
 								dest='name')
-		arg_parser.add_argument('--no_sleep', help="Whether to sleep between jobs",
-								 default=True, dest='to_sleep',action='store_false')
+		arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
+								dest='queue_names')
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
 								 default=True, dest='exit_error',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
@@ -95,7 +95,7 @@ class Processor(object):
 		# Include zope.browserpage.meta.zcm for tales:expressiontype
 		# before including the products
 		xmlconfig.include(context, file="meta.zcml", package=zope.browserpage)
-		
+
 		# include plugins
 		includePluginsDirective(context, PP_APP)
 		includePluginsDirective(context, PP_APP_SITES)
@@ -133,9 +133,16 @@ class Processor(object):
 			getattr(library, 'contentPackages', None)
 
 		name = getattr(args, 'name', None) or u''
-		to_sleep = getattr(args, 'to_sleep', True)
+		queue_names = getattr(args, 'queue_names', None)
+
+		if name is None or queue_names is None:
+			raise ValueError( 'No queue_name(s) passed in' )
+
+		if name is not None and queue_names is None:
+			queue_names = [name]
+
 		exit_on_error = getattr(args, 'exit_error', True)
-		target = AsyncReactor(name=name, to_sleep=to_sleep, exitOnError=exit_on_error)
+		target = AsyncReactor(queue_names=queue_names, exitOnError=exit_on_error)
 		result = target(time.sleep)
 		sys.exit(result)
 
