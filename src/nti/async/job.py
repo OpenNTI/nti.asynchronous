@@ -16,8 +16,6 @@ from zope import interface
 from zope.container.contained import Contained
 from zope.exceptions.exceptionformatter import format_exception
 
-from persistent import Persistent
-
 from .interfaces import NEW
 from .interfaces import ACTIVE
 from .interfaces import FAILED
@@ -40,7 +38,7 @@ _status_mapping = {
 	COMPLETED_ID: COMPLETED}
 
 @interface.implementer(IJob)
-class Job(Contained, Persistent):
+class Job(Contained):
 
 	_error = None
 	_active_start = _active_end = None
@@ -127,16 +125,6 @@ class Job(Contained, Persistent):
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
-
-	def __hash__(self):
-		xhash = 47
-		try:
-			xhash ^= hash(self.args)
-			xhash ^= hash(self.kwargs)
-			xhash ^= hash(self.callable)
-		except TypeError:
-			xhash ^= hash(self.callable)
-		return xhash
 	
 	def __repr__(self):
 		try:
@@ -158,10 +146,9 @@ class Job(Contained, Persistent):
 			return super(Job, self).__repr__()
 		
 @interface.implementer(IError)
-class Error(Contained, Persistent):
+class Error(Contained):
 	
 	def __init__(self, message=u''):
-		Persistent.__init__(self)
 		self.message = message
 		
 	def __str__(self):
