@@ -31,6 +31,7 @@ class AsyncReactor(object):
 	processor = None
 	poll_interval = None
 	current_queue = None
+	current_queue_index = 0
 
 	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True):
 		self.queue_names = queue_names
@@ -53,23 +54,44 @@ class AsyncReactor(object):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
 
+	def _get_job(self):
+		job = None
+		# Prefer our current queue first
+		if self.current_queue is not None:
+			job = self.current_queue.claim()
+
+		# Ok, look at other queues
+		if job is None:
+			idx = self.current_queue_index
+
+			while True:
+				queue = self.queues[ idx ]
+				job = queue.claim()
+				if job is not None:
+					self.current_queue_index = idx
+					self.current_queue = queue
+					break
+
+				idx += 1
+				if idx >= len( self.queues ):
+					idx = 0
+
+				if idx == self.current_queue_index:
+					break
+		return job
+
 	def execute_job(self):
-		current_queue = None
-		for current_queue in self.queues:
-			job = current_queue.claim()
-			if job is not None:
-				self.current_queue = current_queue
-				break
+		job = self._get_job()
 
 		if job is None:
 			return False
 
-		logger.debug("[%s] Executing job (%s)", current_queue, job)
+		logger.debug("[%s] Executing job (%s)", self.current_queue, job)
 		job()
 		if job.hasFailed:
-			logger.error("[%s] Job %r failed", current_queue, job)
-			current_queue.putFailed(job)
-		logger.debug("[%s] Job %r has been executed", current_queue, job)
+			logger.error("[%s] Job %r failed", self.current_queue, job)
+			self.current_queue.putFailed(job)
+		logger.debug("[%s] Job %r has been executed", self.current_queue, job)
 
 		return True
 
