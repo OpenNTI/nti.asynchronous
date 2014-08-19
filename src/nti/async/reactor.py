@@ -103,7 +103,8 @@ class AsyncReactor(object):
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				# TODO Maybe we should not sleep if we have work to do
 				# Especially since we may be reading from multiple queues.
-				self.poll_interval = random.random() * 1.5
+				#self.poll_interval = random.random() * 1.5
+				self.poll_interval = 0
 			else:
 				self.poll_interval += random.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
