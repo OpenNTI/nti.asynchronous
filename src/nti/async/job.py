@@ -16,12 +16,12 @@ from zope import interface
 from zope.container.contained import Contained
 from zope.exceptions.exceptionformatter import format_exception
 
+from nti.externalization.externalization import WithRepr
+
 from .interfaces import NEW
 from .interfaces import ACTIVE
 from .interfaces import FAILED
 from .interfaces import COMPLETED
-
-from .utils import custom_repr
 
 from .interfaces import IJob
 from .interfaces import IError
@@ -38,6 +38,7 @@ _status_mapping = {
 	COMPLETED_ID: COMPLETED}
 
 @interface.implementer(IJob)
+@WithRepr
 class Job(Contained):
 
 	_error = None
@@ -45,17 +46,17 @@ class Job(Contained):
 	_status_id = _callable_name = _callable_root = _result = None
 
 	error_adapter = IError
-	
+
 	def __init__(self, *args, **kwargs):
 		self._status_id = NEW_ID
 		self._reset(*args, **kwargs)
-	
+
 	def _reset(self, *args, **kwargs):
 		_tmpargs = list(args)
 		self.kwargs = dict(kwargs)
 		self.callable = _tmpargs.pop(0)
 		self.args = tuple(_tmpargs)
-		
+
 	@property
 	def queue(self):
 		return self.__parent__
@@ -71,7 +72,7 @@ class Job(Contained):
 	@property
 	def error(self):
 		return self._error
-	
+
 	@property
 	def has_failed(self):
 		return self._status_id == FAILED_ID
@@ -125,35 +126,17 @@ class Job(Contained):
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
-	
-	def __repr__(self):
-		try:
-			call = custom_repr(self._callable_root)
-			if self._callable_name is not None:
-				call += ' :' + self._callable_name
-			args = ', '.join(custom_repr(a) for a in self.args)
-			kwargs = ', '.join(
-				k + "=" + custom_repr(v)
-				for k, v in self.kwargs.items())
-			if args:
-				if kwargs:
-					args += ", " + kwargs
-			else:
-				args = kwargs
-			return '<%s ``%s(%s)``>' % (custom_repr(self), call, args)
-		except (TypeError, ValueError, AttributeError):
-			# broken reprs are a bad idea; they obscure problems
-			return super(Job, self).__repr__()
-		
+
+
 @interface.implementer(IError)
 class Error(Contained):
-	
+
 	def __init__(self, message=u''):
 		self.message = message
-		
+
 	def __str__(self):
 		return self.message
-	
+
 	def __repr__(self):
 		return "%s,%s" % (self.__class__.__name__, self.message)
 
