@@ -67,6 +67,8 @@ class Processor(object):
 								dest='name')
 		arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
 								dest='queue_names')
+		arg_parser.add_argument('-f', '--fail_queue', help="A queue to place failed jobs", default='',
+								dest='fail_queue')
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
 								 default=True, dest='exit_error',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
@@ -141,8 +143,10 @@ class Processor(object):
 		if name is not None and queue_names is None:
 			queue_names = [name]
 
+		fail_queue = getattr(args, 'fail_queue', None)
+
 		exit_on_error = getattr(args, 'exit_error', True)
-		target = AsyncReactor(queue_names=queue_names, exitOnError=exit_on_error)
+		target = AsyncReactor(queue_names=queue_names, fail_queue=fail_queue, exitOnError=exit_on_error)
 		result = target(time.sleep)
 		sys.exit(result)
 

@@ -11,6 +11,7 @@ from hamcrest import is_
 from hamcrest import assert_that
 from hamcrest import none
 from hamcrest import not_none
+from hamcrest import has_length
 
 import operator
 
