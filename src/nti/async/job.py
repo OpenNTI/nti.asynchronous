@@ -41,8 +41,7 @@ _status_mapping = {
 @WithRepr
 class Job(Contained):
 
-	_error = None
-	_active_start = _active_end = None
+	_error = _active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
 
 	error_adapter = IError
@@ -82,6 +81,10 @@ class Job(Contained):
 	def is_success(self):
 		return self._status_id == COMPLETED_ID
 
+	@property
+	def is_new(self):
+		return self._status_id == NEW_ID
+	
 	def _get_callable(self):
 		if self._callable_name is None:
 			return self._callable_root
@@ -126,7 +129,6 @@ class Job(Contained):
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
-
 
 @interface.implementer(IError)
 class Error(Contained):

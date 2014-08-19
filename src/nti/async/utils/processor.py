@@ -34,6 +34,8 @@ from nti.dataserver.utils import run_with_dataserver
 
 from nti.async.reactor import AsyncReactor
 
+# signal handlers
+
 def handler(*args):
 	raise SystemExit()
 
@@ -43,6 +45,8 @@ def sigint_handler(*args):
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, sigint_handler)
+
+# package loader info
 
 class PluginPoint(Contained):
 
@@ -146,7 +150,9 @@ class Processor(object):
 		fail_queue = getattr(args, 'fail_queue', None)
 
 		exit_on_error = getattr(args, 'exit_error', True)
-		target = AsyncReactor(queue_names=queue_names, fail_queue=fail_queue, exitOnError=exit_on_error)
+		target = AsyncReactor(queue_names=queue_names,
+							  fail_queue=fail_queue, 
+							  exitOnError=exit_on_error)
 		result = target(time.sleep)
 		sys.exit(result)
 

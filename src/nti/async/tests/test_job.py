@@ -16,7 +16,8 @@ from hamcrest import has_property
 from hamcrest import greater_than
 
 import sys
-import persistent
+import pickle
+from io import BytesIO
 
 from nti.async.job import Job
 from nti.async.interfaces import IError
@@ -26,7 +27,7 @@ from nti.async.tests import AsyncTestCase
 def call():
 	return 'my result'
 
-class Demo(persistent.Persistent):
+class Demo(object):
 	counter = 0
 	def increase(self, value=1):
 		self.counter += value
@@ -83,4 +84,14 @@ class TestJob(AsyncTestCase):
 			error = IError(sys.exc_info())
 		assert_that(error, is_not(none()))
 		assert_that(error, has_property('message', has_length(greater_than(1))))
-
+		
+	def test_pickle(self):
+		job = Job(multiply, 5, 3)
+		bio = BytesIO()
+		pickle.dump(job, bio)
+		
+		bio.seek(0)
+		unpickled = pickle.load(bio)
+		assert_that(unpickled, has_property('is_new', is_(True)))
+		unpickled()
+		assert_that(unpickled, has_property('result', is_(15)))
