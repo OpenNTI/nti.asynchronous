@@ -8,6 +8,7 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import zlib
 import pickle
 from io import BytesIO
 
@@ -32,7 +33,8 @@ class RedisQueue(object):
 		bio = BytesIO()
 		pickle.dump(job, bio)
 		bio.seek(0)
-		return bio.read()
+		result = zlib.compress(bio.read())
+		return result
 		
 	def put(self, item):
 		item = IJob(item)
@@ -41,6 +43,7 @@ class RedisQueue(object):
 		return item
 
 	def _unpickle(self, data):
+		data = zlib.decompress(data)
 		bio = BytesIO(data)
 		bio.seek(0)
 		result = pickle.load(bio)
