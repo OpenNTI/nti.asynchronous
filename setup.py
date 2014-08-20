@@ -32,6 +32,7 @@ setup(
 	namespace_packages=['nti'],
 	install_requires=[
 		'setuptools',
+        'nti.schema',
         'zope.exceptions'
 	],
 	entry_points=entry_points

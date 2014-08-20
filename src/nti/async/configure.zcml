@@ -16,11 +16,11 @@
 			 for="types.MethodType"
 			 provides=".interfaces.IJob" />
 			 
-	<adapter factory=".job._default_error_adapter"
+	<adapter factory=".adapters._default_error_adapter"
 			 for="exceptions.Exception"
 			 provides=".interfaces.IError" />
 			 
-	<adapter factory=".job._default_exc_info"
+	<adapter factory=".adapters._default_exc_info"
 			 for="tuple"
 			 provides=".interfaces.IError" />
 			 

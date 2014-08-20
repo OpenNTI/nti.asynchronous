@@ -33,7 +33,8 @@ class AsyncReactor(object):
 	current_queue = None
 	current_queue_index = 0
 
-	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2, exitOnError=True):
+	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2, 
+				 exitOnError=True):
 		self.queue_names = queue_names
 		self.fail_queue_name = fail_queue
 		self.exitOnError = exitOnError
@@ -105,9 +106,8 @@ class AsyncReactor(object):
 		return True
 
 	def process_job(self):
-		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		result = True
-
+		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				# TODO Maybe we should not sleep if we have work to do

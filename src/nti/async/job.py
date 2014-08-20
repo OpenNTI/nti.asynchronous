@@ -14,9 +14,10 @@ import datetime
 
 from zope import interface
 from zope.container.contained import Contained
-from zope.exceptions.exceptionformatter import format_exception
 
 from nti.externalization.externalization import WithRepr
+
+from nti.schema.schema import EqHash
 
 from .interfaces import NEW
 from .interfaces import ACTIVE
@@ -131,6 +132,8 @@ class Job(Contained):
 			self._active_end = datetime.datetime.utcnow()
 
 @interface.implementer(IError)
+@WithRepr
+@EqHash('message')
 class Error(Contained):
 
 	def __init__(self, message=u''):
@@ -138,32 +141,3 @@ class Error(Contained):
 
 	def __str__(self):
 		return self.message
-
-	def __repr__(self):
-		return "%s,%s" % (self.__class__.__name__, self.message)
-
-	def __eq__(self, other):
-		try:
-			return self is other or (self.message == other.message)
-		except AttributeError:
-			return NotImplemented
-
-	def __hash__(self):
-		xhash = 47
-		xhash ^= hash(self.message)
-		return xhash
-
-@interface.implementer(IError)
-def _default_error_adapter(e):
-	return Error(e.message)
-
-@interface.implementer(IError)
-def _default_exc_info(exc_info):
-	t, v, tb = exc_info
-	lines = format_exception(t, v, tb, with_filenames=True)
-	if isinstance(str(''), bytes):
-		lines = [l.encode('utf-8','replace') if isinstance(l, unicode) else l for l in lines]
-	else:
-		lines = [l.decode('utf-8','replace') if isinstance(l, bytes) else l for l in lines]
-	message = str('').join( lines )
-	return Error(message)
