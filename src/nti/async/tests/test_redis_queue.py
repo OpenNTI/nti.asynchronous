@@ -67,13 +67,23 @@ class TesRedistQueue(AsyncTestCase):
 		pulled = queue.pull()
 		assert_that(pulled, equal_to(job3))
 		assert_that(list(queue), is_([job4, job5]))
-
+		assert_that(queue, has_length(2))
+		
 		try:
 			queue.remove(job4)
 			self.fail()
 		except NotImplementedError:
 			pass
 
+		job6 = queue.put(create_job(operator.mul, jargs=(34, 1)))
+		job7 = queue.put(create_job(operator.mul, jargs=(34, 1)))
+		assert_that(queue, has_length(4))
+		
+		removed = queue.removeAt(2)
+		assert_that(removed, equal_to(job6))
+		assert_that(queue, has_length(3))
+		assert_that(list(queue), is_([job4, job5, job7]))
+		
 		queue.empty()
 		assert_that(queue, has_length(0))
 		

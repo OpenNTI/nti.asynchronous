@@ -50,6 +50,36 @@ class RedisQueue(object):
 		assert IJob.providedBy(result)
 		return result
 		
+	def removeAt(self, index, unpickle=True):
+		length = len(self)
+		if index < 0:
+			index += length
+			if index < 0:
+				raise IndexError(index + length)
+		if index >= length:
+			raise IndexError(index)
+		
+		data = self._redis.pipeline().\
+						   lrange(self._name, 0, index-1).\
+						   lindex(self._name, index).\
+						   lrange(self._name, index+1,-1).\
+						   execute()
+
+		result = data[1] if data and len(data) >= 2 else None
+		if not result:
+			raise ValueError("Invalid data at index %s" % index)
+		
+		new_items = []
+		new_items.extend(data[0] if data and len(data) >= 1 else ())
+		new_items.extend(data[2] if data and len(data) >= 3 else ())
+		self._redis.pipeline().\
+					delete(self._name).\
+					rpush(self._name, *new_items).\
+					execute()
+					
+		result = self._unpickle(result) if unpickle else result
+		return result
+	
 	def pull(self, index=0):
 		if index < 0 and index != -1:
 			raise IndexError(index)
@@ -62,9 +92,8 @@ class RedisQueue(object):
 			data = self._redis.pipeline().rpop(self._name).execute()
 			data = data[0] if data else None
 		else:
-			# joining list in redis is pretty expensive
-			raise NotImplementedError()
-	
+			data = self.removeAt(index, result=False)
+		
 		if data is None:
 			raise IndexError(index)
 		job = self._unpickle(data)
