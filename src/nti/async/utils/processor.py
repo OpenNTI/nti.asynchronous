@@ -22,6 +22,7 @@ import zope.exceptions
 import zope.browserpage
 
 from zope import component
+from zope.component import hooks
 from zope.container.contained import Contained
 from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
@@ -30,9 +31,11 @@ from z3c.autoinclude.zcml import includePluginsDirective
 
 from nti.contentlibrary.interfaces import IContentPackageLibrary
 
+from nti.site.site import get_site_for_site_names
+
 from nti.dataserver.utils import run_with_dataserver
 
-from nti.async.reactor import AsyncReactor
+from ..reactor import AsyncReactor
 
 # signal handlers
 
@@ -116,19 +119,11 @@ class Processor(object):
 	def setup_site(self, args):
 		site = getattr(args, 'site', None)
 		if site:
-			from pyramid.testing import DummyRequest
-			from pyramid.testing import setUp as psetUp
-
-			request = DummyRequest()
-			config = psetUp(registry=component.getGlobalSiteManager(),
-							request=request,
-							hook_zca=False)
-			config.setup_registry()
-			request.headers['origin'] = \
-							'http://' + site if not site.startswith('http') else site
-			# zope_site_tween tweaks some things on the request that we need to as well
-			request.possible_site_names = \
-					(site if not site.startswith('http') else site[7:],)
+			cur_site = hooks.getSite()
+			new_site = get_site_for_site_names( (site,), site=cur_site )
+			if new_site is cur_site:
+				raise ValueError("Unknown site name", site)
+			hooks.setSite(new_site)
 
 	def process_args(self, args):
 		self.setup_site(args)
