@@ -68,9 +68,8 @@ class RedisQueue(object):
 		return job
 		
 	def remove(self, item):
-		item = IJob(item)
-		data = self._pickle(item)
-		self._redis.pipeline().lrem(self._name, 0, data).execute()
+		# jobs are pickled
+		raise NotImplementedError()
 		
 	def claim(self, default=None):
 		data = self._redis.pipeline().lpop().execute()

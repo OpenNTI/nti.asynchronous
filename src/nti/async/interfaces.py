@@ -51,6 +51,8 @@ class IQueue(IAttributeAnnotatable, IContained):
 
 class IJob(IAttributeAnnotatable, IContained):
 
+	id =  interface.Attribute("""job identifier.""")
+	
 	error =  interface.Attribute("""Any job execution error.""")
 	
 	result = interface.Attribute("""The result of the call. """)

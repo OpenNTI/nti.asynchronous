@@ -9,8 +9,10 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import sys
+import uuid
 import types
 import datetime
+from collections import Mapping
 
 from zope import interface
 from zope.container.contained import Contained
@@ -18,6 +20,8 @@ from zope.container.contained import Contained
 from nti.externalization.externalization import WithRepr
 
 from nti.schema.schema import EqHash
+
+from nti.utils.property import alias
 
 from .interfaces import NEW
 from .interfaces import ACTIVE
@@ -41,12 +45,15 @@ _status_mapping = {
 @interface.implementer(IJob)
 @WithRepr
 class Job(Contained):
-
+	
+	_id = None
 	_error = _active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
 
 	error_adapter = IError
 
+	id = alias('_id')
+	
 	def __init__(self, *args, **kwargs):
 		self._status_id = NEW_ID
 		self._reset(*args, **kwargs)
@@ -130,7 +137,27 @@ class Job(Contained):
 			logger.exception("Job execution failed")
 		finally:
 			self._active_end = datetime.datetime.utcnow()
+			
+	def __eq__(self, other):
+		try:
+			return self is other or (self._id == other._id and self._id)
+		except AttributeError:
+			return NotImplemented
+		
+	def __hash__(self):
+		xhash = 47
+		xhash ^= hash(self._id) if self._id else int(id(self)/16)
+		return xhash
 
+def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
+	assert jargs is None or isinstance(jargs, (tuple, list))
+	assert jkwargs is None or isinstance(jkwargs, Mapping)
+	jkwargs = jkwargs or {}	
+	jargs = [call] + list(jargs or ()) 
+	result = cls(*jargs, **jkwargs)
+	result.id = unicode(jobid or uuid.uuid4())
+	return result
+	
 @interface.implementer(IError)
 @WithRepr
 @EqHash('message')
