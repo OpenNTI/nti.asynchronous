@@ -24,10 +24,10 @@ class RedisQueue(object):
 
 	_queue = _length = _failed_jobs = None
 
-	def __init__(self, redis,  name=None):
-		self._name = name or DEFAULT_QUEUE_NAME
+	def __init__(self, redis, job_queue_name=None, failed_queue_name=None):
 		self._redis = redis
-		self._failed = name + "/failed"
+		self._name = job_queue_name or DEFAULT_QUEUE_NAME
+		self._failed = failed_queue_name or self._name + "/failed"
 		
 	def _pickle(self, job):
 		bio = BytesIO()
@@ -109,4 +109,6 @@ class RedisQueue(object):
 			raise IndexError(index)
 		job = self._unpickle(data)
 		return job
+
+Queue = RedisQueue # alias
 
