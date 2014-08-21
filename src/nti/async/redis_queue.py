@@ -72,10 +72,11 @@ class RedisQueue(object):
 		new_items = []
 		new_items.extend(data[0] if data and len(data) >= 1 else ())
 		new_items.extend(data[2] if data and len(data) >= 3 else ())
-		self._redis.pipeline().\
-					delete(self._name).\
-					rpush(self._name, *new_items).\
-					execute()
+		if new_items:
+			self._redis.pipeline().\
+						delete(self._name).\
+						rpush(self._name, *new_items).\
+						execute()
 					
 		result = self._unpickle(result) if unpickle else result
 		return result
