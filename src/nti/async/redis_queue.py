@@ -51,12 +51,15 @@ class RedisQueue(object):
 		return result
 		
 	def pull(self, index=0):
-		if index < 0:
+		if index < 0 and index != -1:
 			raise IndexError(index)
 		
 		data = None
 		if index == 0:
 			data = self._redis.pipeline().lpop(self._name).execute()
+			data = data[0] if data else None
+		elif index == -1:
+			data = self._redis.pipeline().rpop(self._name).execute()
 			data = data[0] if data else None
 		else:
 			# joining list in redis is pretty expensive
@@ -72,7 +75,7 @@ class RedisQueue(object):
 		raise NotImplementedError()
 		
 	def claim(self, default=None):
-		data = self._redis.pipeline().lpop().execute()
+		data = self._redis.pipeline().lpop(self._name).execute()
 		if data:
 			job = self._unpickle(data[0])
 			return job
@@ -102,7 +105,7 @@ class RedisQueue(object):
 		return bool(len(self))
 
 	def __getitem__(self, index):
-		data = self._redis.pipeline().lindex(self._name).execute()
+		data = self._redis.pipeline().lindex(self._name, index).execute()
 		data = data[0] if data else None
 		if data is None:
 			raise IndexError(index)
