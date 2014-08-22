@@ -88,7 +88,7 @@ class Processor(object):
 		arg_parser.add_argument('--redis', help="Use redis queues",
 								 action='store_true', dest='redis')
 		arg_parser.add_argument('--prefix', help="redis queue prefix",
-								dest='prefix', default=QUEUE_NAME)
+								dest='prefix', default='')
 		return arg_parser
 
 	def create_context(self, env_dir):
@@ -146,7 +146,7 @@ class Processor(object):
 		for name in all_queues:
 			name = '%s%s' % (prefix, name)
 			queue = RedisQueue(redis, name)
-			component.getSiteManager().registerUtility(queue, IRedisQueue, name)
+			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 			
 	def process_args(self, args):
 		self.setup_site(args)
