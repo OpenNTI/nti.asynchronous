@@ -15,11 +15,11 @@ from io import BytesIO
 from zope import interface
 
 from .interfaces import IJob
-from .interfaces import IQueue
+from .interfaces import IRedisQueue
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
-@interface.implementer(IQueue)
+@interface.implementer(IRedisQueue)
 class RedisQueue(object):
 
 	_queue = _length = _failed_jobs = None

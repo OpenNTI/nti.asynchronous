@@ -49,6 +49,10 @@ class IQueue(IAttributeAnnotatable, IContained):
 		Stores a failed job for review
 		"""
 
+class IRedisQueue(IQueue):
+	pass
+
+
 class IJob(IAttributeAnnotatable, IContained):
 
 	id =  interface.Attribute("""job identifier.""")

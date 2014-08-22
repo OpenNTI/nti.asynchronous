@@ -34,20 +34,21 @@ class AsyncReactor(object):
 	current_queue_index = 0
 
 	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2, 
-				 exitOnError=True):
+				 exitOnError=True, queue_interface=IQueue):
 		self.queue_names = queue_names
-		self.fail_queue_name = fail_queue
 		self.exitOnError = exitOnError
+		self.fail_queue_name = fail_queue
 		self.poll_interval = poll_interval
+		self.queue_interface = queue_interface
 
 	@Lazy
 	def queues(self):
-		queues = [component.getUtility(IQueue, name=x) for x in self.queue_names]
+		queues = [component.getUtility(self.queue_interface, name=x) for x in self.queue_names]
 		return queues
 
 	@Lazy
 	def fail_queue(self):
-		fail_queue = component.queryUtility(IQueue, name=self.fail_queue_name)
+		fail_queue = component.queryUtility(self.queue_interface, name=self.fail_queue_name)
 		return fail_queue
 
 	def halt(self):
