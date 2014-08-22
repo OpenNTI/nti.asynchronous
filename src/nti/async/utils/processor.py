@@ -33,9 +33,15 @@ from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from nti.site.site import get_site_for_site_names
 
+from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.utils import run_with_dataserver
 
 from ..reactor import AsyncReactor
+
+from ..interfaces import IQueue
+from ..interfaces import IRedisQueue
+from ..redis_queue import RedisQueue
+from ..redis_queue import DEFAULT_QUEUE_NAME as QUEUE_NAME
 
 # signal handlers
 
@@ -79,6 +85,10 @@ class Processor(object):
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
 								 default=True, dest='exit_error',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
+		arg_parser.add_argument('--redis', help="Use redis queues",
+								 action='store_true', dest='redis')
+		arg_parser.add_argument('--prefix', help="redis queue prefix",
+								dest='prefix', default=QUEUE_NAME)
 		return arg_parser
 
 	def create_context(self, env_dir):
@@ -125,6 +135,19 @@ class Processor(object):
 				raise ValueError("Unknown site name", site)
 			hooks.setSite(new_site)
 
+	def setup_redis_queues(self, queue_names, fail_queue=None, prefix=QUEUE_NAME):
+		redis = component.getUtility(IRedisClient)
+		# prefix queue names
+		prefix = prefix or u''
+		prefix += '/'  if prefix and not prefix.endswith('/')  else ''
+		# collect all queue name
+		all_queues = list(queue_names)
+		all_queues.extend([fail_queue] if fail_queue else ())
+		for name in all_queues:
+			name = '%s%s' % (prefix, name)
+			queue = RedisQueue(redis, name)
+			component.getSiteManager().registerUtility(queue, IRedisQueue, name)
+			
 	def process_args(self, args):
 		self.setup_site(args)
 		self.set_log_formatter(args)
@@ -136,18 +159,26 @@ class Processor(object):
 		name = getattr(args, 'name', None) or u''
 		queue_names = getattr(args, 'queue_names', None)
 
-		if name is None or queue_names is None:
-			raise ValueError( 'No queue_name(s) passed in' )
+		if not name and not queue_names:
+			raise ValueError('No queue name(s) passed in' )
 
-		if name is not None and queue_names is None:
+		if name and not queue_names:
 			queue_names = [name]
 
 		fail_queue = getattr(args, 'fail_queue', None)
 
+		if getattr(args, 'redis', False):
+			queue_interface = IRedisQueue
+			prefix = getattr(args, 'prefix', QUEUE_NAME)
+			self.setup_redis_queues(queue_names, fail_queue=None, prefix=prefix)
+		else:
+			queue_interface = IQueue
+	
 		exit_on_error = getattr(args, 'exit_error', True)
 		target = AsyncReactor(queue_names=queue_names,
 							  fail_queue=fail_queue, 
-							  exitOnError=exit_on_error)
+							  exitOnError=exit_on_error,
+							  queue_interface=queue_interface)
 		result = target(time.sleep)
 		sys.exit(result)
 
