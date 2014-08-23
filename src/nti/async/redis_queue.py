@@ -65,13 +65,15 @@ class RedisQueue(object):
 						   lrange(self._name, index+1,-1).\
 						   execute()
 
-		result = data[1] if data and len(data) >= 2 else None
+		result = data[1] if data and len(data) >= 2 and data[1] else None
 		if not result:
 			raise ValueError("Invalid data at index %s" % index)
 		
 		new_items = []
-		new_items.extend(data[0] if data and len(data) >= 1 else ())
-		new_items.extend(data[2] if data and len(data) >= 3 else ())
+		def _append(items):
+			new_items.extend(i for i in items or () if i is not None)
+		_append(data[0] if data and len(data) >= 1 else ())
+		_append(data[2] if data and len(data) >= 3 else ())
 		if new_items:
 			self._redis.pipeline().\
 						delete(self._name).\
@@ -82,16 +84,13 @@ class RedisQueue(object):
 		return result
 	
 	def pull(self, index=0):
-		if index < 0 and index != -1:
-			raise IndexError(index)
-		
 		data = None
 		if index == 0:
 			data = self._redis.pipeline().lpop(self._name).execute()
-			data = data[0] if data else None
+			data = data[0] if data and data[0] else None
 		elif index == -1:
 			data = self._redis.pipeline().rpop(self._name).execute()
-			data = data[0] if data else None
+			data = data[0] if data and data[0] else None
 		else:
 			data = self.removeAt(index, result=False)
 		
@@ -106,7 +105,7 @@ class RedisQueue(object):
 		
 	def claim(self, default=None):
 		data = self._redis.pipeline().lpop(self._name).execute()
-		if data:
+		if data and data[0]:
 			job = self._unpickle(data[0])
 			return job
 		return default
@@ -122,21 +121,22 @@ class RedisQueue(object):
 
 	def __len__(self):
 		result = self._redis.pipeline().llen(self._name).execute()
-		return result[0] if result else 0
+		return result[0] if result and result[0] is not None else 0
 
 	def __iter__(self):
 		all_jobs = self._redis.pipeline().lrange(self._name, 0, -1).execute()
 		all_jobs = all_jobs[0] if all_jobs else ()
 		for data in all_jobs or ():
-			job = self._unpickle(data)
-			yield job
+			if data is not None:
+				job = self._unpickle(data)
+				yield job
 
 	def __nonzero__(self):
 		return bool(len(self))
 
 	def __getitem__(self, index):
 		data = self._redis.pipeline().lindex(self._name, index).execute()
-		data = data[0] if data else None
+		data = data[0] if data and data[0] else None
 		if data is None:
 			raise IndexError(index)
 		job = self._unpickle(data)

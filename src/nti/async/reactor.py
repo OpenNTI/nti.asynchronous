@@ -71,9 +71,8 @@ class AsyncReactor(object):
 		# Ok, look at other queues
 		if job is None:
 			idx = self.current_queue_index
-
 			while True:
-				queue = self.queues[ idx ]
+				queue = self.queues[idx]
 				job = queue.claim()
 				if job is not None:
 					self.current_queue_index = idx
