@@ -10,14 +10,14 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import component
 
-from .job import Job
+from .job import create_job as job_creator
+
 from .interfaces import IQueue
 
-def get_job_queue(name=u''):
-    result = component.queryUtility(IQueue, name=name)
+def get_job_queue(name=u'', queue_interface=IQueue):
+    result = component.queryUtility(queue_interface, name=name)
     return result
 
 def create_job(func, *args, **kwargs):
-    all_args = [func] + list(args)
-    result = Job(*all_args, **kwargs)
+    result = job_creator(func, jargs=args, jkwargs=kwargs)
     return result
