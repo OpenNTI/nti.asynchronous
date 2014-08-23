@@ -41,7 +41,6 @@ from ..reactor import AsyncReactor
 from ..interfaces import IQueue
 from ..interfaces import IRedisQueue
 from ..redis_queue import RedisQueue
-from ..redis_queue import DEFAULT_QUEUE_NAME as QUEUE_NAME
 
 # signal handlers
 
@@ -87,8 +86,6 @@ class Processor(object):
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
 		arg_parser.add_argument('--redis', help="Use redis queues",
 								 action='store_true', dest='redis')
-		arg_parser.add_argument('--prefix', help="redis queue prefix",
-								dest='prefix', default='')
 		return arg_parser
 
 	def create_context(self, env_dir):
@@ -135,16 +132,11 @@ class Processor(object):
 				raise ValueError("Unknown site name", site)
 			hooks.setSite(new_site)
 
-	def setup_redis_queues(self, queue_names, fail_queue=None, prefix=QUEUE_NAME):
+	def setup_redis_queues(self, queue_names, fail_queue=None):
 		redis = component.getUtility(IRedisClient)
-		# prefix queue names
-		prefix = prefix or u''
-		prefix += '/'  if prefix and not prefix.endswith('/')  else ''
-		# collect all queue name
 		all_queues = list(queue_names)
 		all_queues.extend([fail_queue] if fail_queue else ())
 		for name in all_queues:
-			name = '%s%s' % (prefix, name)
 			queue = RedisQueue(redis, name)
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 			
@@ -169,8 +161,7 @@ class Processor(object):
 
 		if getattr(args, 'redis', False):
 			queue_interface = IRedisQueue
-			prefix = getattr(args, 'prefix', QUEUE_NAME)
-			self.setup_redis_queues(queue_names, fail_queue=None, prefix=prefix)
+			self.setup_redis_queues(queue_names, fail_queue=None)
 		else:
 			queue_interface = IQueue
 	
