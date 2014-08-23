@@ -14,6 +14,8 @@ from io import BytesIO
 
 from zope import interface
 
+from nti.utils.property import Lazy
+
 from .interfaces import IJob
 from .interfaces import IRedisQueue
 
@@ -25,10 +27,14 @@ class RedisQueue(object):
 	_queue = _length = _failed_jobs = None
 
 	def __init__(self, redis, job_queue_name=None, failed_queue_name=None):
-		self._redis = redis
+		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
 		self._failed = failed_queue_name or self._name + "/failed"
-		
+	
+	@Lazy
+	def _redis(self):	
+		return self.__redis() if callable(self.__redis) else self.__redis
+	
 	def _pickle(self, job):
 		bio = BytesIO()
 		pickle.dump(job, bio)
