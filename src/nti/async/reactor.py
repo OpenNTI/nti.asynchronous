@@ -10,6 +10,7 @@ logger = __import__('logging').getLogger(__name__)
 
 import gevent
 import random
+import functools
 
 from zope import component
 from zope import interface
@@ -34,7 +35,9 @@ class AsyncReactor(object):
 	current_queue_index = 0
 
 	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2, 
-				 exitOnError=True, queue_interface=IQueue):
+				 exitOnError=True, queue_interface=IQueue,
+				 site_names=()):
+		self.site_names = site_names
 		self.queue_names = queue_names
 		self.exitOnError = exitOnError
 		self.fail_queue_name = fail_queue
@@ -107,7 +110,12 @@ class AsyncReactor(object):
 
 	def process_job(self):
 		result = True
+		
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
+		if self.site_names:
+			transaction_runner = functools.partial(transaction_runner, 
+												   site_names=self.site_names)
+		
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				# TODO Maybe we should not sleep if we have work to do

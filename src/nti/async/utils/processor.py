@@ -131,6 +131,7 @@ class Processor(object):
 			if new_site is cur_site:
 				raise ValueError("Unknown site name", site)
 			hooks.setSite(new_site)
+		return site
 
 	def setup_redis_queues(self, queue_names, fail_queue=None):
 		redis = component.getUtility(IRedisClient)
@@ -141,7 +142,7 @@ class Processor(object):
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 			
 	def process_args(self, args):
-		self.setup_site(args)
+		site = self.setup_site(args)
 		self.set_log_formatter(args)
 
 		if getattr(args, 'library', False):
@@ -165,10 +166,12 @@ class Processor(object):
 		else:
 			queue_interface = IQueue
 	
+		site_names = () if not site else (site,)
 		exit_on_error = getattr(args, 'exit_error', True)
 		target = AsyncReactor(queue_names=queue_names,
 							  fail_queue=fail_queue, 
 							  exitOnError=exit_on_error,
+							  site_names=site_names,
 							  queue_interface=queue_interface)
 		result = target(time.sleep)
 		sys.exit(result)
