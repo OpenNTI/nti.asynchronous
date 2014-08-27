@@ -34,7 +34,7 @@ class AsyncReactor(object):
 	current_queue = None
 	current_queue_index = 0
 
-	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2, 
+	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2,
 				 exitOnError=True, queue_interface=IQueue,
 				 site_names=()):
 		self.site_names = site_names
@@ -110,17 +110,17 @@ class AsyncReactor(object):
 
 	def process_job(self):
 		result = True
-		
+
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
 		if self.site_names:
-			transaction_runner = functools.partial(transaction_runner, 
+			transaction_runner = functools.partial(transaction_runner,
 												   site_names=self.site_names)
-		
+		# TODO We need to have the site draped off of the events, and then run
+		# within that site in the transaction_runner.
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
-				# TODO Maybe we should not sleep if we have work to do
-				# Especially since we may be reading from multiple queues.
-				#self.poll_interval = random.random() * 1.5
+				# Do not sleep if we have work to do, especially since
+				# we may be reading from multiple queues.
 				self.poll_interval = 0
 			else:
 				self.poll_interval += random.uniform(1, 5)

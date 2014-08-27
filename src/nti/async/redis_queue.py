@@ -10,6 +10,7 @@ logger = __import__('logging').getLogger(__name__)
 
 import zlib
 import pickle
+import transaction
 from io import BytesIO
 
 from zope import interface
@@ -18,6 +19,8 @@ from nti.utils.property import Lazy
 
 from .interfaces import IJob
 from .interfaces import IRedisQueue
+
+from nti.utils import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
@@ -30,22 +33,32 @@ class RedisQueue(object):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
 		self._failed = failed_queue_name or self._name + "/failed"
-	
+		transactions.add_abort_hooks()
+
 	@Lazy
-	def _redis(self):	
+	def _redis(self):
 		return self.__redis() if callable(self.__redis) else self.__redis
-	
+
 	def _pickle(self, job):
 		bio = BytesIO()
 		pickle.dump(job, bio)
 		bio.seek(0)
 		result = zlib.compress(bio.read())
 		return result
-		
+
+	def _put_job(self,data):
+		logger.info( 'Placing job %s', id( data ))
+		self._redis.pipeline().rpush(self._name, data).execute()
+
 	def put(self, item):
+		logger.info( 'Placing item %s', item)
 		item = IJob(item)
 		data = self._pickle(item)
-		self._redis.pipeline().rpush(self._name, data).execute()
+
+		transactions.do( target=self,
+						call=self._put_job,
+						args=(data,) )
+
 		return item
 
 	def _unpickle(self, data):
@@ -55,7 +68,7 @@ class RedisQueue(object):
 		result = pickle.load(bio)
 		assert IJob.providedBy(result)
 		return result
-		
+
 	def removeAt(self, index, unpickle=True):
 		length = len(self)
 		if index < 0:
@@ -64,7 +77,7 @@ class RedisQueue(object):
 				raise IndexError(index + length)
 		if index >= length:
 			raise IndexError(index)
-		
+
 		data = self._redis.pipeline().\
 						   lrange(self._name, 0, index-1).\
 						   lindex(self._name, index).\
@@ -74,7 +87,7 @@ class RedisQueue(object):
 		result = data[1] if data and len(data) >= 2 and data[1] else None
 		if not result:
 			raise ValueError("Invalid data at index %s" % index)
-		
+
 		new_items = []
 		def _append(items):
 			new_items.extend(i for i in items or () if i is not None)
@@ -85,10 +98,10 @@ class RedisQueue(object):
 						delete(self._name).\
 						rpush(self._name, *new_items).\
 						execute()
-					
+
 		result = self._unpickle(result) if unpickle else result
 		return result
-	
+
 	def pull(self, index=0):
 		data = None
 		if index == 0:
@@ -99,18 +112,30 @@ class RedisQueue(object):
 			data = data[0] if data and data[0] else None
 		else:
 			data = self.removeAt(index, result=False)
-		
+
 		if data is None:
 			raise IndexError(index)
 		job = self._unpickle(data)
+
 		return job
-		
+
 	def remove(self, item):
 		# jobs are pickled
 		raise NotImplementedError()
-		
+
 	def claim(self, default=None):
 		data = self._redis.pipeline().lpop(self._name).execute()
+
+		def after_commit_or_abort( success=False ):
+			if success:
+					return
+			logger.info( "Pushing message back onto queue on abort (%s) (%s)", self._name, id( data ) )
+			# We do not want to claim any jobs on transaction abort.
+			# Add our job back to the front of the queue.
+			self._redis.pipeline().lpush(self._name, data).execute()
+		transaction.get().addAfterCommitHook( after_commit_or_abort )
+		transaction.get().addAfterAbortHook( after_commit_or_abort )
+
 		if data and data[0]:
 			job = self._unpickle(data[0])
 			return job

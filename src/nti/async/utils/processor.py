@@ -140,7 +140,7 @@ class Processor(object):
 		for name in all_queues:
 			queue = RedisQueue(redis, name)
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
-			
+
 	def process_args(self, args):
 		site = self.setup_site(args)
 		self.set_log_formatter(args)
@@ -165,11 +165,11 @@ class Processor(object):
 			self.setup_redis_queues(queue_names, fail_queue=None)
 		else:
 			queue_interface = IQueue
-	
+
 		site_names = () if not site else (site,)
 		exit_on_error = getattr(args, 'exit_error', True)
 		target = AsyncReactor(queue_names=queue_names,
-							  fail_queue=fail_queue, 
+							  fail_queue=fail_queue,
 							  exitOnError=exit_on_error,
 							  site_names=site_names,
 							  queue_interface=queue_interface)
