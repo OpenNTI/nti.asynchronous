@@ -135,7 +135,6 @@ class RedisQueue(object):
 			if data and data[0]:
 				self._redis.pipeline().lpush(self._name, data[0]).execute()
 		transaction.get().addAfterCommitHook( after_commit_or_abort )
-		transaction.get().addAfterAbortHook( after_commit_or_abort )
 
 		if data and data[0]:
 			job = self._unpickle(data[0])
