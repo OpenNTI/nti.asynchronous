@@ -18,6 +18,8 @@ from zope.component import ComponentLookupError
 
 from ZODB.POSException import ConflictError
 
+from nti.zodb.interfaces import UnableToAcquireCommitLock
+
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.utils.property import Lazy
@@ -128,8 +130,8 @@ class AsyncReactor(object):
 		except (ComponentLookupError, AttributeError, TypeError, StandardError), e:
 			logger.error('Error while processing job. Queue=(%s), error=%s', self.current_queue, e)
 			result = False
-		except ConflictError:
-			logger.error('ConflictError while pulling job from Queue=(%s)', self.current_queue)
+		except (ConflictError,UnableToAcquireCommitLock), e:
+			logger.error('ConflictError while pulling job from Queue=(%s), error=%s', self.current_queue, e)
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.current_queue)
 			result = not self.exitOnError
