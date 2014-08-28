@@ -22,16 +22,11 @@ import zope.exceptions
 import zope.browserpage
 
 from zope import component
-from zope.component import hooks
 from zope.container.contained import Contained
 from zope.configuration import xmlconfig, config
 from zope.dottedname import resolve as dottedname
 
 from z3c.autoinclude.zcml import includePluginsDirective
-
-from nti.contentlibrary.interfaces import IContentPackageLibrary
-
-from nti.site.site import get_site_for_site_names
 
 from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.utils import run_with_dataserver
