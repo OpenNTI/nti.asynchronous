@@ -123,16 +123,6 @@ class Processor(object):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
 		logging.root.handlers[0].setFormatter(zope.exceptions.log.Formatter(ei))
 
-	def setup_site(self, args):
-		site = getattr(args, 'site', None)
-		if site:
-			cur_site = hooks.getSite()
-			new_site = get_site_for_site_names( (site,), site=cur_site )
-			if new_site is cur_site:
-				raise ValueError("Unknown site name", site)
-			hooks.setSite(new_site)
-		return site
-
 	def setup_redis_queues(self, queue_names, fail_queue=None):
 		redis = component.getUtility(IRedisClient)
 		all_queues = list(queue_names)
@@ -142,12 +132,7 @@ class Processor(object):
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 
 	def process_args(self, args):
-		site = self.setup_site(args)
 		self.set_log_formatter(args)
-
-		if getattr(args, 'library', False):
-			library = component.queryUtility(IContentPackageLibrary)
-			getattr(library, 'contentPackages', None)
 
 		name = getattr(args, 'name', None) or u''
 		queue_names = getattr(args, 'queue_names', None)
@@ -166,7 +151,7 @@ class Processor(object):
 		else:
 			queue_interface = IQueue
 
-		site_names = () if not site else (site,)
+		site_names = getattr(args, 'site', None)
 		exit_on_error = getattr(args, 'exit_error', True)
 		target = AsyncReactor(queue_names=queue_names,
 							  fail_queue=fail_queue,
@@ -187,11 +172,13 @@ class Processor(object):
 
 		context = self.create_context(env_dir)
 		conf_packages = (self.conf_package, 'nti.async')
+
 		run_with_dataserver(environment_dir=env_dir,
 							xmlconfig_packages=conf_packages,
 							verbose=args.verbose,
 							context=context,
 							minimal_ds=True,
+							use_transaction_runner=False,
 							function=lambda: self.process_args(args))
 
 def main():
