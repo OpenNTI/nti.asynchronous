@@ -127,10 +127,10 @@ class AsyncReactor(object):
 			else:
 				self.poll_interval += random.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
-		except (ComponentLookupError, AttributeError, TypeError, StandardError), e:
+		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
 			logger.error('Error while processing job. Queue=(%s), error=%s', self.current_queue, e)
 			result = False
-		except (ConflictError,UnableToAcquireCommitLock), e:
+		except (ConflictError,UnableToAcquireCommitLock) as e:
 			logger.error('ConflictError while pulling job from Queue=(%s), error=%s', self.current_queue, e)
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.current_queue)
