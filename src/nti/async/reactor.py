@@ -22,8 +22,6 @@ from nti.zodb.interfaces import UnableToAcquireCommitLock
 
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
-from nti.contentlibrary.interfaces import IContentPackageLibrary
-
 from nti.utils.property import Lazy
 
 from .interfaces import IQueue
@@ -47,13 +45,6 @@ class AsyncReactor(object):
 		self.fail_queue_name = fail_queue
 		self.poll_interval = poll_interval
 		self.queue_interface = queue_interface
-
-		transaction_runner = component.getUtility(IDataserverTransactionRunner)
-		transaction_runner(self._load_library)
-
-	def _load_library(self):
-		library = component.queryUtility(IContentPackageLibrary)
-		getattr(library, 'contentPackages', None)
 
 	@Lazy
 	def queues(self):

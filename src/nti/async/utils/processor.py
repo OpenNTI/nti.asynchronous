@@ -30,6 +30,9 @@ from z3c.autoinclude.zcml import includePluginsDirective
 
 from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.utils import run_with_dataserver
+from nti.dataserver.interfaces import IDataserverTransactionRunner
+
+from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from ..reactor import AsyncReactor
 
@@ -126,6 +129,10 @@ class Processor(object):
 			queue = RedisQueue(redis, name)
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 
+	def _load_library(self):
+		library = component.queryUtility(IContentPackageLibrary)
+		library.syncContentPackages()
+
 	def process_args(self, args):
 		self.set_log_formatter(args)
 
@@ -145,6 +152,10 @@ class Processor(object):
 			self.setup_redis_queues(queue_names, fail_queue=None)
 		else:
 			queue_interface = IQueue
+
+		if getattr( args, 'library', False ):
+			transaction_runner = component.getUtility(IDataserverTransactionRunner)
+			transaction_runner(self._load_library)
 
 		site_names = [getattr(args, 'site', None)]
 		exit_on_error = getattr(args, 'exit_error', True)
