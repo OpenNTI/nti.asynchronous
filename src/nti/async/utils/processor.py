@@ -146,7 +146,7 @@ class Processor(object):
 		else:
 			queue_interface = IQueue
 
-		site_names = getattr(args, 'site', None)
+		site_names = [getattr(args, 'site', None)]
 		exit_on_error = getattr(args, 'exit_error', True)
 		target = AsyncReactor(queue_names=queue_names,
 							  fail_queue=fail_queue,

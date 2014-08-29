@@ -33,7 +33,7 @@ class RedisQueue(object):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
 		self._failed = failed_queue_name or self._name + "/failed"
-		transactions.add_abort_hooks()
+		#transactions.add_abort_hooks()
 
 	@Lazy
 	def _redis(self):
