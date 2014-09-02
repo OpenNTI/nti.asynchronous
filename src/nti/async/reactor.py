@@ -172,12 +172,12 @@ class AsyncFailedReactor(AsyncReactor):
 		for queue in self.queues:
 			self.current_queue = queue
 			job = original_job = queue.claim()
-			# FIXME We could have infinite loop here.  We just want to process these jobs once
 			logger.info( 'Processing queue (%s)', queue._name )
 			while job is not None:
 				yield job
 				job = queue.claim()
 				if job == original_job:
+					# Stop when we reach the start
 					break
 
 	def execute_job(self):
