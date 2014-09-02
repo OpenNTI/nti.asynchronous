@@ -36,12 +36,12 @@ class AsyncReactor(object):
 	current_queue = None
 	current_queue_index = 0
 
-	def __init__(self, queue_names=(), poll_interval=2,
-				 exitOnError=True, queue_interface=IQueue,
-				 site_names=()):
+	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True, 
+				 queue_interface=IQueue, site_names=()):
 		self.site_names = site_names
 		self.queue_names = queue_names
 		self.exitOnError = exitOnError
+		self.generator = random.Random()
 		self.poll_interval = poll_interval
 		self.queue_interface = queue_interface
 
@@ -116,7 +116,7 @@ class AsyncReactor(object):
 				# we may be reading from multiple queues.
 				self.poll_interval = 0
 			else:
-				self.poll_interval += random.uniform(1, 5)
+				self.poll_interval += self.generator.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
 			logger.error('Error while processing job. Queue=(%s), error=%s', self.current_queue, e)
@@ -129,7 +129,7 @@ class AsyncReactor(object):
 		return result
 
 	def run(self, sleep=gevent.sleep):
-		random.seed()
+		self.generator.seed()
 		self.stop = False
 		try:
 			logger.info('Starting reactor for queues=(%s)', self.queue_names )
@@ -210,4 +210,3 @@ class AsyncFailedReactor(AsyncReactor):
 			self.processor = None
 
 	__call__ = run
-
