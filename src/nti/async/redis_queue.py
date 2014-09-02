@@ -29,10 +29,16 @@ class RedisQueue(object):
 
 	_queue = _length = _failed_jobs = None
 
-	def __init__(self, redis, job_queue_name=None, failed_queue_name=None):
+	def __init__(self, redis, job_queue_name=None, failed_queue_name=None, create_failed_queue=True):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
-		self._failed = failed_queue_name or self._name + "/failed"
+		failed_queue_name = failed_queue_name or self._name + "/failed"
+		if create_failed_queue:
+			self._failed = RedisQueue( 	self.__redis,
+										job_queue_name=failed_queue_name,
+										create_failed_queue=False )
+		else:
+			self._failed = self
 		#transactions.add_abort_hooks()
 
 	@Lazy
@@ -145,10 +151,11 @@ class RedisQueue(object):
 		self._redis.pipeline().delete(self._name).execute()
 
 	def putFailed(self, item):
-		item = IJob(item)
-		data = self._pickle(item)
-		self._redis.pipeline().rpush(self._failed, data).execute()
+		self._failed.put( item )
 	put_failed = putFailed
+
+	def get_failed_queue(self):
+		return self._failed
 
 	def __len__(self):
 		result = self._redis.pipeline().llen(self._name).execute()

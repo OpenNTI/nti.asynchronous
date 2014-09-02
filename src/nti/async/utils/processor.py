@@ -35,6 +35,7 @@ from nti.dataserver.interfaces import IDataserverTransactionRunner
 from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from ..reactor import AsyncReactor
+from ..reactor import AsyncFailedReactor
 
 from ..interfaces import IQueue
 from ..interfaces import IRedisQueue
@@ -77,13 +78,13 @@ class Processor(object):
 								dest='name')
 		arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
 								dest='queue_names')
-		arg_parser.add_argument('-f', '--fail_queue', help="A queue to place failed jobs", default='',
-								dest='fail_queue')
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
 								 default=True, dest='exit_error',action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="request SITE")
 		arg_parser.add_argument('--redis', help="Use redis queues",
 								 action='store_true', dest='redis')
+		arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
+								 action='store_true', dest='failed_jobs')
 		return arg_parser
 
 	def create_context(self, env_dir):
@@ -121,10 +122,9 @@ class Processor(object):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
 		logging.root.handlers[0].setFormatter(zope.exceptions.log.Formatter(ei))
 
-	def setup_redis_queues(self, queue_names, fail_queue=None):
+	def setup_redis_queues(self, queue_names):
 		redis = component.getUtility(IRedisClient)
 		all_queues = list(queue_names)
-		all_queues.extend([fail_queue] if fail_queue else ())
 		for name in all_queues:
 			queue = RedisQueue(redis, name)
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
@@ -145,13 +145,13 @@ class Processor(object):
 		if name and not queue_names:
 			queue_names = [name]
 
-		fail_queue = getattr(args, 'fail_queue', None)
-
 		if getattr(args, 'redis', False):
 			queue_interface = IRedisQueue
-			self.setup_redis_queues(queue_names, fail_queue=None)
+			self.setup_redis_queues(queue_names)
 		else:
 			queue_interface = IQueue
+
+		failed_jobs = getattr( args, 'failed_jobs', False)
 
 		if getattr( args, 'library', False ):
 			transaction_runner = component.getUtility(IDataserverTransactionRunner)
@@ -159,12 +159,18 @@ class Processor(object):
 
 		site_names = [getattr(args, 'site', None)]
 		exit_on_error = getattr(args, 'exit_error', True)
-		target = AsyncReactor(queue_names=queue_names,
-							  fail_queue=fail_queue,
-							  exitOnError=exit_on_error,
-							  site_names=site_names,
-							  queue_interface=queue_interface)
-		result = target(time.sleep)
+
+		if failed_jobs:
+			target = AsyncFailedReactor(queue_names=queue_names,
+										site_names=site_names,
+								  		queue_interface=queue_interface)
+			result = target()
+		else:
+			target = AsyncReactor(queue_names=queue_names,
+								  exitOnError=exit_on_error,
+								  site_names=site_names,
+								  queue_interface=queue_interface)
+			result = target(time.sleep)
 		sys.exit(result)
 
 	def __call__(self, *args, **kwargs):

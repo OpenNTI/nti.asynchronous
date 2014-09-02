@@ -36,13 +36,12 @@ class AsyncReactor(object):
 	current_queue = None
 	current_queue_index = 0
 
-	def __init__(self, queue_names=(), fail_queue=None, poll_interval=2,
+	def __init__(self, queue_names=(), poll_interval=2,
 				 exitOnError=True, queue_interface=IQueue,
 				 site_names=()):
 		self.site_names = site_names
 		self.queue_names = queue_names
 		self.exitOnError = exitOnError
-		self.fail_queue_name = fail_queue
 		self.poll_interval = poll_interval
 		self.queue_interface = queue_interface
 
@@ -50,11 +49,6 @@ class AsyncReactor(object):
 	def queues(self):
 		queues = [component.getUtility(self.queue_interface, name=x) for x in self.queue_names]
 		return queues
-
-	@Lazy
-	def fail_queue(self):
-		fail_queue = component.queryUtility(self.queue_interface, name=self.fail_queue_name)
-		return fail_queue
 
 	def halt(self):
 		self.stop = True
@@ -102,10 +96,7 @@ class AsyncReactor(object):
 		job()
 		if job.hasFailed:
 			logger.error("[%s] Job %r failed", self.current_queue, job)
-			if self.fail_queue is not None:
-				self.fail_queue.put( job )
-			else:
-				self.current_queue.putFailed(job)
+			self.current_queue.putFailed(job)
 		logger.debug("[%s] Job %r has been executed", self.current_queue, job)
 
 		return True
@@ -141,7 +132,7 @@ class AsyncReactor(object):
 		random.seed()
 		self.stop = False
 		try:
-			logger.info('Starting reactor for Queue=(%s)', self.queue_names )
+			logger.info('Starting reactor for queues=(%s)', self.queue_names )
 			while not self.stop:
 				try:
 					sleep(self.poll_interval)
@@ -158,3 +149,65 @@ class AsyncReactor(object):
 	def _spawn_job_processor(self):
 		result = gevent.spawn(self.run)
 		return result
+
+class AsyncFailedReactor(AsyncReactor):
+	"""
+	Knows how to process jobs off of the failure queue.  We'll try
+	each job once and then return.
+	"""
+
+	def __init__(self, queue_names=(), queue_interface=IQueue,
+				 site_names=()):
+		self.site_names = site_names
+		self.queue_names = queue_names
+		self.queue_interface = queue_interface
+
+	@Lazy
+	def queues(self):
+		queues = [	component.getUtility(self.queue_interface, name=x).get_failed_queue()
+					for x in self.queue_names]
+		return queues
+
+	def __iter__(self):
+		for queue in self.queues:
+			self.current_queue = queue
+			job = original_job = queue.claim()
+			# FIXME We could have infinite loop here.  We just want to process these jobs once
+			logger.info( 'Processing queue (%s)', queue._name )
+			while job is not None:
+				yield job
+				job = queue.claim()
+				if job == original_job:
+					break
+
+	def execute_job(self):
+		# We do all jobs inside a single (hopefully manageable) transaction.
+		for job in self:
+			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+			job()
+			if job.hasFailed:
+				logger.error("[%s] Job %r failed", self.current_queue, job)
+				self.current_queue.putFailed(job)
+			logger.debug("[%s] Job %r has been executed", self.current_queue, job)
+
+		return True
+
+	def process_job(self):
+		transaction_runner = component.getUtility(IDataserverTransactionRunner)
+		if self.site_names:
+			transaction_runner = functools.partial(transaction_runner,
+												   site_names=self.site_names)
+		# TODO We need to have the site draped off of the events, and then run
+		# within that site in the transaction_runner.
+		transaction_runner(self.execute_job, retries=2, sleep=1)
+
+	def run(self):
+		try:
+			logger.info('Starting reactor for failed jobs in queues=(%s)', self.queue_names )
+			self.process_job()
+		finally:
+			logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
+			self.processor = None
+
+	__call__ = run
+
