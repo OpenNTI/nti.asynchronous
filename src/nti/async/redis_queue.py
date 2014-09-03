@@ -29,17 +29,17 @@ class RedisQueue(object):
 
 	_queue = _length = _failed_jobs = None
 
-	def __init__(self, redis, job_queue_name=None, failed_queue_name=None, create_failed_queue=True):
+	def __init__(self, redis, job_queue_name=None, failed_queue_name=None, 
+				 create_failed_queue=True):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
-		failed_queue_name = failed_queue_name or self._name + "/failed"
 		if create_failed_queue:
+			failed_queue_name = failed_queue_name or self._name + "/failed"
 			self._failed = RedisQueue( 	self.__redis,
 										job_queue_name=failed_queue_name,
 										create_failed_queue=False )
 		else:
 			self._failed = self
-		#transactions.add_abort_hooks()
 
 	@Lazy
 	def _redis(self):
