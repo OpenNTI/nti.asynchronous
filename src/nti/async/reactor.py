@@ -34,9 +34,8 @@ class AsyncReactor(object):
 	processor = None
 	poll_interval = None
 	current_queue = None
-	current_queue_index = 0
 
-	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True, 
+	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
 				 queue_interface=IQueue, site_names=()):
 		self.site_names = site_names
 		self.queue_names = queue_names
@@ -62,28 +61,15 @@ class AsyncReactor(object):
 			self.processor = self._spawn_job_processor()
 
 	def _get_job(self):
+		# These are basically priority queues.  We should start
+		# at the beginning each time.
 		job = None
-		# Prefer our current queue first
-		if self.current_queue is not None:
-			job = self.current_queue.claim()
+		for queue in self.queues:
+			job = queue.claim()
+			if job is not None:
+				self.current_queue = queue
+				break
 
-		# Ok, look at other queues
-		if job is None:
-			idx = self.current_queue_index
-			while True:
-				queue = self.queues[idx]
-				job = queue.claim()
-				if job is not None:
-					self.current_queue_index = idx
-					self.current_queue = queue
-					break
-
-				idx += 1
-				if idx >= len( self.queues ):
-					idx = 0
-
-				if idx == self.current_queue_index:
-					break
 		return job
 
 	def execute_job(self):

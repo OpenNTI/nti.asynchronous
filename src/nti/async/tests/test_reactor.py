@@ -70,13 +70,9 @@ class TestReactor(AsyncTestCase):
 		assert_that( job, not_none() )
 		assert_that( job, is_( job1 ))
 
-		# New jobs up front
+		# Job in first queue processed first
 		job3 = q1.put(Job(operator.mul, 7, 6))
 		job4 = q2.put(Job(operator.mul, 14, 3))
-
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job2 ))
 
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
@@ -85,6 +81,10 @@ class TestReactor(AsyncTestCase):
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
 		assert_that( job, is_( job4 ))
+
+		job = self.reactor._get_job()
+		assert_that( job, not_none() )
+		assert_that( job, is_( job2 ))
 
 		# Empty again
 		job = self.reactor._get_job()
@@ -95,8 +95,8 @@ class TestReactor(AsyncTestCase):
 		job6 = q1.put(Job(operator.mul, 14, 3))
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
-		assert_that( job, is_( job5 ))
+		assert_that( job, is_( job6 ))
 
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
-		assert_that( job, is_( job6 ))
+		assert_that( job, is_( job5 ))
