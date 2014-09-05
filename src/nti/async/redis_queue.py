@@ -132,18 +132,18 @@ class RedisQueue(object):
 		raise NotImplementedError()
 
 	def claim(self, default=None):
-		# once we get the job from redis, it's remove from
+		# once we get the job from redis, it's remove from it
 		data = self._redis.pipeline().lpop(self._name).execute()
 		if not data or not data[0]:
 			return default
 			
 		job = self._unpickle(data[0])
-		logger.debug("job %s claimed", job.id)
+		logger.debug("Job %s claimed", job.id)
 		
 		# make sure we put the job back if the transaction fails
 		def after_commit_or_abort( success=False ):
 			if not success:
-				logger.warn("Pushing message back onto queue on abort (%s) (%s)",
+				logger.warn("Pushing job back onto queue on abort (%s) (%s)",
 							self._name, job.id)
 				# We do not want to claim any jobs on transaction abort.
 				# Add our job back to the front of the queue.
