@@ -61,10 +61,12 @@ class RedisQueue(object):
 		item = IJob(item)
 		data = self._pickle(item)
 
+		# we put the job after the transaction has
+		# been committed
 		transactions.do(target=self,
 						call=self._put_job,
 						args=(data,) )
-
+		
 		return item
 
 	def _unpickle(self, data):
@@ -130,23 +132,26 @@ class RedisQueue(object):
 		raise NotImplementedError()
 
 	def claim(self, default=None):
+		# once we get the job from redis, it's remove from
 		data = self._redis.pipeline().lpop(self._name).execute()
-
+		if not data or not data[0]:
+			return default
+			
+		job = self._unpickle(data[0])
+		logger.debug("job %s claimed", job.id)
+		
+		# make sure we put the job back if the transaction fails
 		def after_commit_or_abort( success=False ):
-			if success:
-				return
-			logger.info( "Pushing message back onto queue on abort (%s) (%s)", self._name, id( data ) )
-			# We do not want to claim any jobs on transaction abort.
-			# Add our job back to the front of the queue.
-			if data and data[0]:
+			if not success:
+				logger.warn("Pushing message back onto queue on abort (%s) (%s)",
+							self._name, job.id)
+				# We do not want to claim any jobs on transaction abort.
+				# Add our job back to the front of the queue.
 				self._redis.pipeline().lpush(self._name, data[0]).execute()
-		transaction.get().addAfterCommitHook( after_commit_or_abort )
-
-		if data and data[0]:
-			job = self._unpickle(data[0])
-			return job
-		return default
-
+		transaction.get().addAfterCommitHook(after_commit_or_abort)
+		
+		return job
+		
 	def empty(self):
 		self._redis.pipeline().delete(self._name).execute()
 
