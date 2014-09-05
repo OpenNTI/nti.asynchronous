@@ -76,12 +76,12 @@ class AsyncReactor(object):
 		if job is None:
 			return False
 
-		logger.debug("[%s] Executing job (%s)", self.current_queue, job.id)
+		logger.debug("[%s] Executing job (%s)", self.current_queue, job)
 		job()
 		if job.hasFailed:
-			logger.error("[%s] Job %r failed", self.current_queue, job.id)
+			logger.error("[%s] Job %s failed", self.current_queue, job)
 			self.current_queue.putFailed(job)
-		logger.debug("[%s] Job %r has been executed", self.current_queue, job.id)
+		logger.debug("[%s] Job %s has been executed", self.current_queue, job)
 
 		return True
 
@@ -169,12 +169,12 @@ class AsyncFailedReactor(AsyncReactor):
 	def execute_job(self):
 		# We do all jobs inside a single (hopefully manageable) transaction.
 		for job in self:
-			logger.debug("[%s] Executing job (%s)", self.current_queue, job.id)
+			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
 			job()
 			if job.hasFailed:
-				logger.error("[%s] Job %s failed", self.current_queue, job.id)
+				logger.error("[%s] Job %s failed", self.current_queue, job)
 				self.current_queue.putFailed(job)
-			logger.debug("[%s] Job %s has been executed", self.current_queue, job.id)
+			logger.debug("[%s] Job %s has been executed", self.current_queue, job)
 
 		return True
 

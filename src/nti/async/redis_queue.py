@@ -137,7 +137,7 @@ class RedisQueue(object):
 			return default
 			
 		job = self._unpickle(data[0])
-		logger.debug("Job %s claimed", job.id)
+		logger.debug("Job %s claimed", job)
 		
 		# make sure we put the job back if the transaction fails
 		def after_commit_or_abort( success=False ):
@@ -161,6 +161,12 @@ class RedisQueue(object):
 	def get_failed_queue(self):
 		return self._failed
 
+	def __str__(self):
+		return self._name
+	
+	def __repr__(self):
+		return "%s(%s,%s)" % (self.__class__.__name__, self._name, self._failed._name)
+	
 	def __len__(self):
 		result = self._redis.pipeline().llen(self._name).execute()
 		return result[0] if result and result[0] is not None else 0
