@@ -69,21 +69,19 @@ class AsyncReactor(object):
 			if job is not None:
 				self.current_queue = queue
 				break
-
 		return job
 
 	def execute_job(self):
 		job = self._get_job()
-
 		if job is None:
 			return False
 
-		logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+		logger.debug("[%s] Executing job (%s)", self.current_queue, job.id)
 		job()
 		if job.hasFailed:
-			logger.error("[%s] Job %r failed", self.current_queue, job)
+			logger.error("[%s] Job %r failed", self.current_queue, job.id)
 			self.current_queue.putFailed(job)
-		logger.debug("[%s] Job %r has been executed", self.current_queue, job)
+		logger.debug("[%s] Job %r has been executed", self.current_queue, job.id)
 
 		return True
 
@@ -105,10 +103,12 @@ class AsyncReactor(object):
 				self.poll_interval += self.generator.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
-			logger.error('Error while processing job. Queue=(%s), error=%s', self.current_queue, e)
+			logger.error('Error while processing job. Queue=(%s), error=%s', 
+						 self.current_queue, e)
 			result = False
-		except (ConflictError,UnableToAcquireCommitLock) as e:
-			logger.error('ConflictError while pulling job from Queue=(%s), error=%s', self.current_queue, e)
+		except (ConflictError, UnableToAcquireCommitLock) as e:
+			logger.error('ConflictError while pulling job from Queue=(%s), error=%s', 
+						 self.current_queue, e)
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.current_queue)
 			result = not self.exitOnError
@@ -118,7 +118,7 @@ class AsyncReactor(object):
 		self.generator.seed()
 		self.stop = False
 		try:
-			logger.info('Starting reactor for queues=(%s)', self.queue_names )
+			logger.info('Starting reactor for queues=(%s)', self.queue_names)
 			while not self.stop:
 				try:
 					sleep(self.poll_interval)
@@ -150,15 +150,15 @@ class AsyncFailedReactor(AsyncReactor):
 
 	@Lazy
 	def queues(self):
-		queues = [	component.getUtility(self.queue_interface, name=x).get_failed_queue()
-					for x in self.queue_names]
+		queues = [component.getUtility(self.queue_interface, name=x).get_failed_queue()
+				  for x in self.queue_names]
 		return queues
 
 	def __iter__(self):
 		for queue in self.queues:
 			self.current_queue = queue
 			job = original_job = queue.claim()
-			logger.info( 'Processing queue (%s)', queue._name )
+			logger.info('Processing queue (%s)', queue._name)
 			while job is not None:
 				yield job
 				job = queue.claim()
@@ -169,12 +169,12 @@ class AsyncFailedReactor(AsyncReactor):
 	def execute_job(self):
 		# We do all jobs inside a single (hopefully manageable) transaction.
 		for job in self:
-			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+			logger.debug("[%s] Executing job (%s)", self.current_queue, job.id)
 			job()
 			if job.hasFailed:
-				logger.error("[%s] Job %r failed", self.current_queue, job)
+				logger.error("[%s] Job %s failed", self.current_queue, job.id)
 				self.current_queue.putFailed(job)
-			logger.debug("[%s] Job %r has been executed", self.current_queue, job)
+			logger.debug("[%s] Job %s has been executed", self.current_queue, job.id)
 
 		return True
 
@@ -189,7 +189,8 @@ class AsyncFailedReactor(AsyncReactor):
 
 	def run(self):
 		try:
-			logger.info('Starting reactor for failed jobs in queues=(%s)', self.queue_names )
+			logger.info('Starting reactor for failed jobs in queues=(%s)', 
+						self.queue_names)
 			self.process_job()
 		finally:
 			logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
