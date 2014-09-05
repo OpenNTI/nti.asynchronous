@@ -134,7 +134,7 @@ class Job(Contained):
 			self._status_id = FAILED_ID
 			self._error = self.error_adapter(sys.exc_info(), None) or \
 						  self.error_adapter(e, None)
-			logger.exception("Job execution failed")
+			logger.exception("Job (%s) execution failed", self)
 		finally:
 			self._active_end = datetime.datetime.utcnow()
 			

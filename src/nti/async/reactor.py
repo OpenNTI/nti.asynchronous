@@ -87,9 +87,9 @@ class AsyncReactor(object):
 						self.current_queue, job, e)
 			self.current_queue.putFailed( job )
 		if job.hasFailed:
-			logger.error("[%s] Job %s failed", self.current_queue, job)
+			logger.error("[%s] Job %s failed", self.current_queue, job.id)
 			self.current_queue.putFailed(job)
-		logger.debug("[%s] Job %s has been executed", self.current_queue, job)
+		logger.debug("[%s] Job %s has been executed", self.current_queue, job.id)
 
 		return True
 
@@ -111,14 +111,14 @@ class AsyncReactor(object):
 				self.poll_interval += self.generator.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
-			logger.error('Error while processing job. Queue=(%s), error=%s',
+			logger.error('Error while processing job. Queue=[%s], error=%s',
 						 self.current_queue, e)
 			result = False
 		except (ConflictError, UnableToAcquireCommitLock) as e:
-			logger.error('ConflictError while pulling job from Queue=(%s), error=%s',
+			logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
 						 self.current_queue, e)
 		except:
-			logger.exception('Cannot execute job. Queue=(%s)', self.current_queue)
+			logger.exception('Cannot execute job. Queue=[%s]', self.current_queue)
 			result = not self.exitOnError
 		return result
 
@@ -135,7 +135,7 @@ class AsyncReactor(object):
 				except KeyboardInterrupt:
 					break
 		finally:
-			logger.warn('Exiting reactor. Queue=(%s)', self.queue_names)
+			logger.warn('Exiting reactor. Queues=(%s)', self.queue_names)
 			self.processor = None
 
 	__call__ = run
@@ -166,7 +166,7 @@ class AsyncFailedReactor(AsyncReactor):
 		for queue in self.queues:
 			self.current_queue = queue
 			job = original_job = queue.claim()
-			logger.info('Processing queue (%s)', queue._name)
+			logger.info('Processing queue [%s]', queue._name)
 			while job is not None:
 				yield job
 				job = queue.claim()
@@ -185,9 +185,9 @@ class AsyncFailedReactor(AsyncReactor):
 							self.current_queue, job, e)
 				self.current_queue.putFailed( job )
 			if job.hasFailed:
-				logger.error("[%s] Job %s failed", self.current_queue, job)
+				logger.error("[%s] Job (%s) failed", self.current_queue, job.id)
 				self.current_queue.putFailed(job)
-			logger.debug("[%s] Job %s has been executed", self.current_queue, job)
+			logger.debug("[%s] Job (%s) has been executed", self.current_queue, job.id)
 
 		return True
 
