@@ -109,8 +109,8 @@ class AsyncReactor(object):
 				self.poll_interval = min(self.poll_interval, 60)
 		except IntegrityError as e:
 			# TODO Need to formalize these arbitrary client-side errors
-			logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
-							self.current_queue, self.current_job, e)
+			logger.error("[%s] Job (%s) failed due to IntegrityError, duplicate job? (%s)",
+						 self.current_queue, self.current_job, e)
 			self.current_queue.putFailed( self.current_job )
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
 			logger.error('Error while processing job. Queue=[%s], error=%s',
