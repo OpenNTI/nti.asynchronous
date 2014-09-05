@@ -53,14 +53,13 @@ class RedisQueue(object):
 		return result
 
 	def _put_job(self,data):
-		logger.debug( 'Placing job %s', id( data ))
 		self._redis.pipeline().rpush(self._name, data).execute()
 
 	def put(self, item):
-		logger.debug( 'Placing item %s', item)
 		item = IJob(item)
 		data = self._pickle(item)
-
+		logger.debug('Placing %s', item)
+		
 		# we put the job after the transaction has
 		# been committed
 		transactions.do(target=self,
@@ -144,7 +143,7 @@ class RedisQueue(object):
 		def after_commit_or_abort( success=False ):
 			if not success:
 				logger.warn("Pushing job back onto queue on abort (%s) (%s)",
-							self._name, job.id)
+							self._name, job)
 				# We do not want to claim any jobs on transaction abort.
 				# Add our job back to the front of the queue.
 				self._redis.pipeline().lpush(self._name, data[0]).execute()
