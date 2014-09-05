@@ -27,6 +27,9 @@ from nti.utils.property import Lazy
 from .interfaces import IQueue
 from .interfaces import IAsyncReactor
 
+# XXX Hack for now
+from sqlalchemy.exc import IntegrityError
+
 @interface.implementer(IAsyncReactor)
 class AsyncReactor(object):
 
@@ -77,7 +80,12 @@ class AsyncReactor(object):
 			return False
 
 		logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-		job()
+		try:
+			job()
+		except IntegrityError as e:
+			logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
+						self.current_queue, job, e)
+			self.current_queue.putFailed( job )
 		if job.hasFailed:
 			logger.error("[%s] Job %s failed", self.current_queue, job)
 			self.current_queue.putFailed(job)
@@ -103,11 +111,11 @@ class AsyncReactor(object):
 				self.poll_interval += self.generator.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
-			logger.error('Error while processing job. Queue=(%s), error=%s', 
+			logger.error('Error while processing job. Queue=(%s), error=%s',
 						 self.current_queue, e)
 			result = False
 		except (ConflictError, UnableToAcquireCommitLock) as e:
-			logger.error('ConflictError while pulling job from Queue=(%s), error=%s', 
+			logger.error('ConflictError while pulling job from Queue=(%s), error=%s',
 						 self.current_queue, e)
 		except:
 			logger.exception('Cannot execute job. Queue=(%s)', self.current_queue)
@@ -170,7 +178,12 @@ class AsyncFailedReactor(AsyncReactor):
 		# We do all jobs inside a single (hopefully manageable) transaction.
 		for job in self:
 			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-			job()
+			try:
+				job()
+			except IntegrityError as e:
+				logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
+							self.current_queue, job, e)
+				self.current_queue.putFailed( job )
 			if job.hasFailed:
 				logger.error("[%s] Job %s failed", self.current_queue, job)
 				self.current_queue.putFailed(job)
@@ -189,7 +202,7 @@ class AsyncFailedReactor(AsyncReactor):
 
 	def run(self):
 		try:
-			logger.info('Starting reactor for failed jobs in queues=(%s)', 
+			logger.info('Starting reactor for failed jobs in queues=(%s)',
 						self.queue_names)
 			self.process_job()
 		finally:
