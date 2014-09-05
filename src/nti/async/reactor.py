@@ -37,6 +37,7 @@ class AsyncReactor(object):
 	processor = None
 	poll_interval = None
 	current_queue = None
+	current_job = None
 
 	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
 				 queue_interface=IQueue, site_names=()):
@@ -70,6 +71,7 @@ class AsyncReactor(object):
 		for queue in self.queues:
 			job = queue.claim()
 			if job is not None:
+				self.current_job = job
 				self.current_queue = queue
 				break
 		return job
@@ -80,12 +82,7 @@ class AsyncReactor(object):
 			return False
 
 		logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-		try:
-			job()
-		except IntegrityError as e:
-			logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
-						self.current_queue, job, e)
-			self.current_queue.putFailed( job )
+		job()
 		if job.hasFailed:
 			logger.error("[%s] Job %s failed", self.current_queue, job.id)
 			self.current_queue.putFailed(job)
@@ -110,6 +107,11 @@ class AsyncReactor(object):
 			else:
 				self.poll_interval += self.generator.uniform(1, 5)
 				self.poll_interval = min(self.poll_interval, 60)
+		except IntegrityError as e:
+			# TODO Need to formalize these arbitrary client-side errors
+			logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
+							self.current_queue, self.current_job, e)
+			self.current_queue.putFailed( self.current_job )
 		except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
 			logger.error('Error while processing job. Queue=[%s], error=%s',
 						 self.current_queue, e)
@@ -178,12 +180,7 @@ class AsyncFailedReactor(AsyncReactor):
 		# We do all jobs inside a single (hopefully manageable) transaction.
 		for job in self:
 			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-			try:
-				job()
-			except IntegrityError as e:
-				logger.error("[%s] Job %s failed due to IntegrityError, duplicate job? (%s)",
-							self.current_queue, job, e)
-				self.current_queue.putFailed( job )
+			job()
 			if job.hasFailed:
 				logger.error("[%s] Job (%s) failed", self.current_queue, job.id)
 				self.current_queue.putFailed(job)
