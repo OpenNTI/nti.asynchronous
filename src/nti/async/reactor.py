@@ -157,28 +157,30 @@ class AsyncFailedReactor(AsyncReactor):
 		return queues
 
 	def __iter__(self):
-		for queue in self.queues:
-			self.current_queue = queue
-			job = original_job = queue.claim()
-			logger.info('Processing queue [%s]', queue._name)
-			while job is not None:
-				yield job
-				job = queue.claim()
-				if job == original_job:
-					# Stop when we reach the start
-					break
+		queue = self.current_queue
+		job = original_job = queue.claim()
+		logger.info('Processing queue [%s]', queue._name)
+		while job is not None:
+			yield job
+			job = queue.claim()
+			if job == original_job:
+				# Stop when we reach the start
+				break
 
 	def execute_job(self):
-		# We do all jobs inside a single (hopefully manageable) transaction.
+		count = 0
+		# We do all jobs for a queue inside a single (hopefully manageable) transaction.
 		for job in self:
 			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
 			job()
 			if job.hasFailed:
 				logger.error("[%s] Job (%s) failed", self.current_queue, job.id)
 				self.current_queue.putFailed(job)
+			else:
+				count += 1
 			logger.debug("[%s] Job (%s) has been executed", self.current_queue, job.id)
 
-		return True
+		return count
 
 	def process_job(self):
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
@@ -187,7 +189,10 @@ class AsyncFailedReactor(AsyncReactor):
 												   site_names=self.site_names)
 		# TODO We need to have the site draped off of the events, and then run
 		# within that site in the transaction_runner.
-		transaction_runner(self.execute_job, retries=2, sleep=1)
+		for queue in self.queues:
+			self.current_queue = queue
+			count = transaction_runner(self.execute_job, retries=2, sleep=1)
+			logger.info('Finished processing queue [%s] [count=%s]', queue._name, count)
 
 	def run(self):
 		try:
