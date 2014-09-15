@@ -11,6 +11,7 @@ from hamcrest import is_
 from hamcrest import equal_to
 from hamcrest import has_length
 from hamcrest import assert_that
+from hamcrest import not_none
 
 import operator
 import transaction
@@ -20,6 +21,12 @@ from nti.async.redis_queue import RedisQueue
 
 from nti.async.tests import AsyncTestCase
 
+from nti.utils import transactions
+
+from nti.app.testing.application_webtest import ApplicationLayerTest
+from nti.app.testing.decorators import WithSharedApplicationMockDS
+
+from nti.dataserver.tests import mock_dataserver
 from nti.dataserver.tests.mock_redis import InMemoryMockRedis
 
 def _redis():
@@ -113,3 +120,60 @@ class TesRedistQueue(AsyncTestCase):
 
 		queue.empty()
 		assert_that(queue, has_length( 0 ) )
+
+def _pass_job():
+	pass
+
+def _fail_job():
+	raise Exception()
+
+class TestJobs(ApplicationLayerTest):
+
+	@WithSharedApplicationMockDS
+	def test_transactions(self):
+
+		queue = RedisQueue(redis=_redis())
+		assert_that(queue, has_length(0))
+
+		# Fill it up
+		with mock_dataserver.mock_db_trans(self.ds):
+			queue.put( create_job( _pass_job ) )
+			queue.put( create_job( _fail_job ) )
+			queue.put( create_job( _pass_job ) )
+
+		assert_that(queue, has_length(3))
+
+		# Simple job
+		with mock_dataserver.mock_db_trans(self.ds):
+			claimed = queue.claim()
+			assert_that(claimed, not_none())
+			claimed()
+
+		assert_that(queue, has_length(2))
+
+		# Normal erring job
+		with mock_dataserver.mock_db_trans(self.ds):
+			claimed = queue.claim()
+			assert_that(claimed, not_none())
+			claimed()
+
+		assert_that(queue, has_length(1))
+
+		def _fail():
+			raise Exception()
+
+		# Job that fails during commit
+		try:
+			with mock_dataserver.mock_db_trans(self.ds):
+				claimed = queue.claim()
+				assert_that(claimed, not_none())
+				claimed()
+
+				transactions.do(target=self,
+								call=_fail,
+								args=None )
+		except:
+			pass
+
+		# Job failed and is back on queue
+		assert_that(queue, has_length(1))

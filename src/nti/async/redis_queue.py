@@ -29,7 +29,7 @@ class RedisQueue(object):
 
 	_queue = _length = _failed_jobs = None
 
-	def __init__(self, redis, job_queue_name=None, failed_queue_name=None, 
+	def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
 				 create_failed_queue=True):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
@@ -59,13 +59,13 @@ class RedisQueue(object):
 		item = IJob(item)
 		data = self._pickle(item)
 		logger.debug('Placing job (%s) in [%s]', item.id, self._name)
-		
+
 		# we put the job after the transaction has
 		# been committed
 		transactions.do(target=self,
 						call=self._put_job,
 						args=(data,) )
-		
+
 		return item
 
 	def _unpickle(self, data):
@@ -135,10 +135,10 @@ class RedisQueue(object):
 		data = self._redis.pipeline().lpop(self._name).execute()
 		if not data or not data[0]:
 			return default
-			
+
 		job = self._unpickle(data[0])
 		logger.debug("Job (%s) claimed", job.id)
-		
+
 		# make sure we put the job back if the transaction fails
 		def after_commit_or_abort( success=False ):
 			if not success:
@@ -148,9 +148,9 @@ class RedisQueue(object):
 				# Add our job back to the front of the queue.
 				self._redis.pipeline().lpush(self._name, data[0]).execute()
 		transaction.get().addAfterCommitHook(after_commit_or_abort)
-		
+
 		return job
-		
+
 	def empty(self):
 		self._redis.pipeline().delete(self._name).execute()
 
@@ -163,10 +163,10 @@ class RedisQueue(object):
 
 	def __str__(self):
 		return self._name
-	
+
 	def __repr__(self):
 		return "%s(%s,%s)" % (self.__class__.__name__, self._name, self._failed._name)
-	
+
 	def __len__(self):
 		result = self._redis.pipeline().llen(self._name).execute()
 		return result[0] if result and result[0] is not None else 0
