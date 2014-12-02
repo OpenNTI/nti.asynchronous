@@ -52,19 +52,19 @@ class RedisQueue(object):
 		result = zlib.compress(bio.read())
 		return result
 
-	def _put_job(self,data):
-		self._redis.pipeline().rpush(self._name, data).execute()
+	def _put_job(self, pipe, data):
+		pipe.rpush(self._name, data).execute()
 
 	def put(self, item):
 		item = IJob(item)
 		data = self._pickle(item)
+		pipe = self._redis.pipeline()
 		logger.debug('Placing job (%s) in [%s]', item.id, self._name)
 
-		# we put the job after the transaction has
-		# been committed
+		# Only place the job once the transaction has been committed.
 		transactions.do(target=self,
 						call=self._put_job,
-						args=(data,) )
+						args=(pipe,data) )
 
 		return item
 
