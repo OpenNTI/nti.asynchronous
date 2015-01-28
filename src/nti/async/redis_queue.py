@@ -3,6 +3,7 @@
 """
 .. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -15,12 +16,11 @@ from io import BytesIO
 
 from zope import interface
 
+from nti.utils import transactions
 from nti.utils.property import Lazy
 
 from .interfaces import IJob
 from .interfaces import IRedisQueue
-
-from nti.utils import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
@@ -148,7 +148,6 @@ class RedisQueue(object):
 				# Add our job back to the front of the queue.
 				self._redis.pipeline().lpush(self._name, data[0]).execute()
 		transaction.get().addAfterCommitHook(after_commit_or_abort)
-
 		return job
 
 	def empty(self):
@@ -191,4 +190,3 @@ class RedisQueue(object):
 		return job
 
 Queue = RedisQueue # alias
-

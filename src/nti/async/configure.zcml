@@ -23,6 +23,5 @@
 	<adapter factory=".adapters._default_exc_info"
 			 for="tuple"
 			 provides=".interfaces.IError" />
-			 
-	<configure zcml:condition="have devmode" />
+
 </configure>

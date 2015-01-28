@@ -3,6 +3,7 @@
 """
 .. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -23,13 +24,13 @@ from nti.schema.schema import EqHash
 
 from nti.utils.property import alias
 
+from .interfaces import IJob
+from .interfaces import IError
+
 from .interfaces import NEW
 from .interfaces import ACTIVE
 from .interfaces import FAILED
 from .interfaces import COMPLETED
-
-from .interfaces import IJob
-from .interfaces import IError
 
 NEW_ID = 0
 ACTIVE_ID = 1
@@ -130,7 +131,7 @@ class Job(Contained):
 			self._status_id = COMPLETED_ID
 			self._result = result
 			return result
-		except Exception, e:
+		except Exception as e:
 			self._status_id = FAILED_ID
 			self._error = self.error_adapter(sys.exc_info(), None) or \
 						  self.error_adapter(e, None)
