@@ -18,11 +18,11 @@ from collections import Mapping
 from zope import interface
 from zope.container.contained import Contained
 
+from nti.common.property import alias
+
 from nti.externalization.representation import WithRepr
 
 from nti.schema.schema import EqHash
-
-from nti.utils.property import alias
 
 from .interfaces import IJob
 from .interfaces import IError

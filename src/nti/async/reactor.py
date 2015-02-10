@@ -19,11 +19,11 @@ from zope.component import ComponentLookupError
 
 from ZODB.POSException import ConflictError
 
-from nti.zodb.interfaces import UnableToAcquireCommitLock
+from nti.common.property import Lazy
 
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
-from nti.utils.property import Lazy
+from nti.zodb.interfaces import UnableToAcquireCommitLock
 
 from .interfaces import IQueue
 from .interfaces import IAsyncReactor

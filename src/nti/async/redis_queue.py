@@ -16,8 +16,9 @@ from io import BytesIO
 
 from zope import interface
 
+from nti.common.property import Lazy
+
 from nti.utils import transactions
-from nti.utils.property import Lazy
 
 from .interfaces import IJob
 from .interfaces import IRedisQueue
