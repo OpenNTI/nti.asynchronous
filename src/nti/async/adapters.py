@@ -13,6 +13,7 @@ from zope import interface
 from zope.exceptions.exceptionformatter import format_exception
 
 from .job import Error
+
 from .interfaces import IError
 
 @interface.implementer(IError)

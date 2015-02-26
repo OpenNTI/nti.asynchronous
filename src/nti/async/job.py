@@ -19,18 +19,17 @@ from zope import interface
 from zope.container.contained import Contained
 
 from nti.common.property import alias
-
-from nti.externalization.representation import WithRepr
+from nti.common.representation import WithRepr
 
 from nti.schema.schema import EqHash
-
-from .interfaces import IJob
-from .interfaces import IError
 
 from .interfaces import NEW
 from .interfaces import ACTIVE
 from .interfaces import FAILED
 from .interfaces import COMPLETED
+
+from .interfaces import IJob
+from .interfaces import IError
 
 NEW_ID = 0
 ACTIVE_ID = 1
