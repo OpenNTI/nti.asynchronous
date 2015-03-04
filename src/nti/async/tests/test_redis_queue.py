@@ -21,7 +21,7 @@ from nti.async.redis_queue import RedisQueue
 
 from nti.async.tests import AsyncTestCase
 
-from nti.utils import transactions
+from nti.transactions import transactions
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 from nti.app.testing.decorators import WithSharedApplicationMockDS

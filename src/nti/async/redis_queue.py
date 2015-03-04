@@ -18,7 +18,7 @@ from zope import interface
 
 from nti.common.property import Lazy
 
-from nti.utils import transactions
+from nti.transactions import transactions
 
 from .interfaces import IJob
 from .interfaces import IRedisQueue
