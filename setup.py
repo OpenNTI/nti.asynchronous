@@ -32,7 +32,8 @@ setup(
 	install_requires=[
 		'setuptools',
 		'zope.exceptions',
-		'nti.schema'
+		'nti.schema',
+		'nti.transactions'
 	],
 	entry_points=entry_points
 )
