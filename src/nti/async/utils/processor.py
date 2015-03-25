@@ -9,9 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from nti.monkey import relstorage_patch_all_except_gevent_on_import
-relstorage_patch_all_except_gevent_on_import.patch()
-
 import os
 import sys
 import time
@@ -20,17 +17,12 @@ import logging
 import argparse
 
 import zope.exceptions
-import zope.browserpage
-
 from zope import component
-from zope.container.contained import Contained
-from zope.configuration import xmlconfig, config
-from zope.dottedname import resolve as dottedname
 
-from z3c.autoinclude.zcml import includePluginsDirective
+from nti.dataserver.utils import run_with_dataserver
+from nti.dataserver.utils.base_script import create_context
 
 from nti.dataserver.interfaces import IRedisClient
-from nti.dataserver.utils import run_with_dataserver
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.contentlibrary.interfaces import IContentPackageLibrary
@@ -54,17 +46,6 @@ def sigint_handler(*args):
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, sigint_handler)
 
-# package loader info
-
-class PluginPoint(Contained):
-
-	def __init__(self, name):
-		self.__name__ = name
-
-PP_APP = PluginPoint('nti.app')
-PP_APP_SITES = PluginPoint('nti.app.sites')
-PP_APP_PRODUCTS = PluginPoint('nti.app.products')
-
 class Processor(object):
 
 	conf_package = 'nti.appserver'
@@ -87,37 +68,6 @@ class Processor(object):
 		arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
 								 action='store_true', dest='failed_jobs')
 		return arg_parser
-
-	def create_context(self, env_dir):
-		etc = os.getenv('DATASERVER_ETC_DIR') or os.path.join(env_dir, 'etc')
-		etc = os.path.expanduser(etc)
-
-		context = config.ConfigurationMachine()
-		xmlconfig.registerCommonDirectives(context)
-
-		slugs = os.path.join(etc, 'package-includes')
-		if os.path.exists(slugs) and os.path.isdir(slugs):
-			package = dottedname.resolve('nti.dataserver')
-			context = xmlconfig.file('configure.zcml', package=package, context=context)
-			xmlconfig.include(context, files=os.path.join(slugs, '*.zcml'),
-							  package=self.conf_package)
-
-		library_zcml = os.path.join(etc, 'library.zcml')
-		if not os.path.exists(library_zcml):
-			raise Exception("Could not locate library zcml file %s", library_zcml)
-
-		xmlconfig.include(context, file=library_zcml, package=self.conf_package)
-
-		# Include zope.browserpage.meta.zcm for tales:expressiontype
-		# before including the products
-		xmlconfig.include(context, file="meta.zcml", package=zope.browserpage)
-
-		# include plugins
-		includePluginsDirective(context, PP_APP)
-		includePluginsDirective(context, PP_APP_SITES)
-		includePluginsDirective(context, PP_APP_PRODUCTS)
-
-		return context
 
 	def set_log_formatter(self, args):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
@@ -183,7 +133,7 @@ class Processor(object):
 		if not env_dir or not os.path.exists(env_dir) and not os.path.isdir(env_dir):
 			raise IOError("Invalid dataserver environment root directory")
 
-		context = self.create_context(env_dir)
+		context = create_context(env_dir, with_library=True)
 		conf_packages = (self.conf_package, 'nti.async')
 
 		run_with_dataserver(environment_dir=env_dir,
