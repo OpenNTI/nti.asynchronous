@@ -9,6 +9,18 @@ entry_points = {
 	],
 }
 
+TESTS_REQUIRE = [
+	'nose',
+	'nose-timer',
+	'nose-pudb',
+	'nose-progressive',
+	'nose2[coverage_plugin]',
+	'pyhamcrest',
+	'zope.testing',
+	'nti.nose_traceback_info',
+	'nti.testing'
+]
+
 setup(
 	name='nti.async',
 	version=VERSION,
@@ -31,9 +43,31 @@ setup(
 	namespace_packages=['nti'],
 	install_requires=[
 		'setuptools',
+		'BTrees',
+		'gevent',
+		'persistent',
+		'transaction',
+		'zc.blist',
+		'zc.queue',
+		'ZODB',
+		'zope.annotation',
+		'zope.component',
+		'zope.container',
 		'zope.exceptions',
+		'zope.interface',
+		'zope.location',
+		'zope.security',
+		'nti.common',
 		'nti.schema',
-		'nti.transactions'
+		'nti.transactions',
+		'nti.zodb'
+	],
+	extras_require={
+		'test': TESTS_REQUIRE,
+	},
+	dependency_links=[
+		'git+https://github.com/NextThought/nti.schema.git#egg=nti.schema',
+		'git+https://github.com/NextThought/nti.nose_traceback_info.git#egg=nti.nose_traceback_info'
 	],
 	entry_points=entry_points
 )

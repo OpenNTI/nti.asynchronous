@@ -8,7 +8,9 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 __docformat__ = "restructuredtext en"
 
 from zope import interface
+
 from zope.location.interfaces import IContained
+
 from zope.annotation.interfaces import IAttributeAnnotatable
 
 NEW = u'New'
