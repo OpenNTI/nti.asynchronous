@@ -124,6 +124,15 @@ class Processor(object):
 			result = target(time.sleep)
 		sys.exit(result)
 
+	def extend_context(self, context):
+		# plugins
+		pass
+
+	def create_context(self, env_dir):
+		context = create_context(env_dir, with_library=True)
+		self.extend_context( context )
+		return context
+
 	def __call__(self, *args, **kwargs):
 		arg_parser = self.create_arg_parser()
 		args = arg_parser.parse_args()
@@ -133,7 +142,7 @@ class Processor(object):
 		if not env_dir or not os.path.exists(env_dir) and not os.path.isdir(env_dir):
 			raise IOError("Invalid dataserver environment root directory")
 
-		context = create_context(env_dir, with_library=True)
+		context = self.create_context(env_dir)
 		conf_packages = (self.conf_package, 'nti.async')
 
 		run_with_dataserver(environment_dir=env_dir,
