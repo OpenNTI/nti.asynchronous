@@ -21,7 +21,7 @@ COMPLETED = u'Completed'
 class IError(interface.Interface):
 	message = interface.Attribute("""Error message""")
 	
-class IQueue(IAttributeAnnotatable, IContained):
+class IBaseQueue(IContained):
 
 	def put(item):
 		"""
@@ -52,7 +52,10 @@ class IQueue(IAttributeAnnotatable, IContained):
 		Stores a failed job for review
 		"""
 
-class IRedisQueue(IQueue):
+class IQueue(IBaseQueue, IAttributeAnnotatable):
+	pass
+
+class IRedisQueue(IBaseQueue):
 	pass
 
 class IJob(IAttributeAnnotatable, IContained):
