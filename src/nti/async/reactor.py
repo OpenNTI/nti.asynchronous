@@ -21,7 +21,7 @@ from ZODB.POSException import ConflictError
 
 from nti.common.property import Lazy
 
-from nti.dataserver.interfaces import IDataserverTransactionRunner
+from nti.site.interfaces import ISiteTransactionRunner
 
 from nti.zodb.interfaces import UnableToAcquireCommitLock
 
@@ -91,7 +91,7 @@ class AsyncReactor(object):
 	def process_job(self):
 		result = True
 
-		transaction_runner = component.getUtility(IDataserverTransactionRunner)
+		transaction_runner = component.getUtility(ISiteTransactionRunner)
 		if self.site_names:
 			transaction_runner = functools.partial(transaction_runner,
 												   site_names=self.site_names)
@@ -184,7 +184,7 @@ class AsyncFailedReactor(AsyncReactor):
 		return count
 
 	def process_job(self):
-		transaction_runner = component.getUtility(IDataserverTransactionRunner)
+		transaction_runner = component.getUtility(ISiteTransactionRunner)
 		if self.site_names:
 			transaction_runner = functools.partial(transaction_runner,
 												   site_names=self.site_names)
