@@ -67,7 +67,6 @@ setup(
 		'test': TESTS_REQUIRE,
 	},
 	dependency_links=[
-		'git+https://github.com/NextThought/nti.schema.git#egg=nti.schema',
 		'git+https://github.com/NextThought/nti.nose_traceback_info.git#egg=nti.nose_traceback_info'
 	],
 	entry_points=entry_points
