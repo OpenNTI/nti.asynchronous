@@ -103,6 +103,7 @@ class Processor(object):
 
 		if getattr(args, 'redis', False):
 			queue_interface = IRedisQueue
+			logger.info("Using redis queues")
 			self.setup_redis_queues(queue_names)
 		else:
 			queue_interface = IQueue
@@ -112,8 +113,13 @@ class Processor(object):
 		if getattr( args, 'library', False ):
 			transaction_runner = component.getUtility(IDataserverTransactionRunner)
 			transaction_runner(self.load_library)
+			logger.info("Library loaded")
 
-		site_names = [getattr(args, 'site', None)]
+		site = getattr(args, 'site', None)
+		if site:
+			logger.info("Using site %s", site)
+		site_names = (site,) if site else ()
+		
 		exit_on_error = getattr(args, 'exit_error', True)
 
 		if failed_jobs:
