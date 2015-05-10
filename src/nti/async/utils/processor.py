@@ -50,24 +50,29 @@ class Processor(object):
 
 	conf_package = 'nti.appserver'
 
-	def create_arg_parser(self):
-		arg_parser = argparse.ArgumentParser(description="Async processor")
+	processor_name = "Async processor"
+	
+	def add_arg_parser_arguments(self, arg_parser):
 		arg_parser.add_argument('-v', '--verbose', help="Be verbose",
 								 action='store_true', dest='verbose')
 		arg_parser.add_argument('-l', '--library', help="Load library packages",
 								action='store_true', dest='library')
-		arg_parser.add_argument('-n', '--name', help="Queue name", default='',
-								dest='name')
+		arg_parser.add_argument('-n', '--name', help="Queue name", 
+								default=u'', dest='name')
 		arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
 								dest='queue_names')
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
 								 default=True, dest='exit_error',action='store_false')
-		arg_parser.add_argument('--site', dest='site', help="request SITE")
+		arg_parser.add_argument('--site', dest='site', help="Application SITE")
 		arg_parser.add_argument('--redis', help="Use redis queues",
 								 action='store_true', dest='redis')
 		arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
 								 action='store_true', dest='failed_jobs')
 		return arg_parser
+	
+	def create_arg_parser(self):
+		arg_parser = argparse.ArgumentParser(description=self.processor_name)
+		return self.add_arg_parser_arguments(arg_parser)
 
 	def set_log_formatter(self, args):
 		ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
@@ -80,7 +85,7 @@ class Processor(object):
 			queue = RedisQueue(redis, name)
 			component.globalSiteManager.registerUtility(queue, IRedisQueue, name)
 
-	def _load_library(self):
+	def load_library(self):
 		library = component.queryUtility(IContentPackageLibrary)
 		library.syncContentPackages()
 
@@ -106,7 +111,7 @@ class Processor(object):
 
 		if getattr( args, 'library', False ):
 			transaction_runner = component.getUtility(IDataserverTransactionRunner)
-			transaction_runner(self._load_library)
+			transaction_runner(self.load_library)
 
 		site_names = [getattr(args, 'site', None)]
 		exit_on_error = getattr(args, 'exit_error', True)
@@ -125,7 +130,7 @@ class Processor(object):
 		sys.exit(result)
 
 	def extend_context(self, context):
-		# plugins
+		## plugins
 		pass
 
 	def create_context(self, env_dir):

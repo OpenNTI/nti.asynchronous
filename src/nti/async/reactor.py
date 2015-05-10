@@ -11,7 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 import gevent
 import random
-import functools
+from functools import partial
 
 from zope import component
 from zope import interface
@@ -33,9 +33,9 @@ class AsyncReactor(object):
 
 	stop = False
 	processor = None
+	current_job = None
 	poll_interval = None
 	current_queue = None
-	current_job = None
 
 	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
 				 queue_interface=IQueue, site_names=()):
@@ -48,7 +48,8 @@ class AsyncReactor(object):
 
 	@Lazy
 	def queues(self):
-		queues = [component.getUtility(self.queue_interface, name=x) for x in self.queue_names]
+		queues = [component.getUtility(self.queue_interface, name=x) 
+				  for x in self.queue_names]
 		return queues
 
 	def halt(self):
@@ -63,8 +64,8 @@ class AsyncReactor(object):
 			self.processor = self._spawn_job_processor()
 
 	def _get_job(self):
-		# These are basically priority queues.  We should start
-		# at the beginning each time.
+		## These are basically priority queues. 
+		## We should start at the beginning each time.
 		job = None
 		for queue in self.queues:
 			job = queue.claim()
@@ -93,14 +94,14 @@ class AsyncReactor(object):
 
 		transaction_runner = component.getUtility(ISiteTransactionRunner)
 		if self.site_names:
-			transaction_runner = functools.partial(transaction_runner,
-												   site_names=self.site_names)
-		# TODO We need to have the site draped off of the events, and then run
-		# within that site in the transaction_runner.
+			transaction_runner = partial(transaction_runner, site_names=self.site_names)
+
+		## TODO: We need to have the site draped off of the events, and then run
+		## within that site in the transaction_runner.
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
-				# Do not sleep if we have work to do, especially since
-				# we may be reading from multiple queues.
+				## Do not sleep if we have work to do, especially since
+				## we may be reading from multiple queues.
 				self.poll_interval = 0
 			else:
 				self.poll_interval += self.generator.uniform(1, 5)
@@ -145,8 +146,7 @@ class AsyncFailedReactor(AsyncReactor):
 	each job once and then return.
 	"""
 
-	def __init__(self, queue_names=(), queue_interface=IQueue,
-				 site_names=()):
+	def __init__(self, queue_names=(), queue_interface=IQueue, site_names=()):
 		self.site_names = site_names
 		self.queue_names = queue_names
 		self.queue_interface = queue_interface
@@ -165,12 +165,12 @@ class AsyncFailedReactor(AsyncReactor):
 			yield job
 			job = queue.claim()
 			if job == original_job:
-				# Stop when we reach the start
+				## Stop when we reach the start
 				break
 
 	def execute_job(self):
 		count = 0
-		# We do all jobs for a queue inside a single (hopefully manageable) transaction.
+		## We do all jobs for a queue inside a single (hopefully manageable) transaction.
 		for job in self:
 			logger.debug("[%s] Executing job (%s)", self.current_queue, job)
 			job()
@@ -186,10 +186,9 @@ class AsyncFailedReactor(AsyncReactor):
 	def process_job(self):
 		transaction_runner = component.getUtility(ISiteTransactionRunner)
 		if self.site_names:
-			transaction_runner = functools.partial(transaction_runner,
-												   site_names=self.site_names)
-		# TODO We need to have the site draped off of the events, and then run
-		# within that site in the transaction_runner.
+			transaction_runner = partial(transaction_runner, site_names=self.site_names)
+		## TODO: We need to have the site draped off of the events, and then run
+		## within that site in the transaction_runner.
 		for queue in self.queues:
 			self.current_queue = queue
 			count = transaction_runner(self.execute_job, retries=2, sleep=1)
