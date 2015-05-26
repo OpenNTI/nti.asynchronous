@@ -92,3 +92,5 @@ class IAsyncReactor(interface.Interface):
 	"""
 	marker interface for a reactor
 	"""
+
+	queue_names =  interface.Attribute("""Queue names.""")

@@ -17,6 +17,7 @@ import logging
 import argparse
 
 import zope.exceptions
+
 from zope import component
 
 from nti.dataserver.utils import run_with_dataserver
@@ -32,6 +33,8 @@ from ..reactor import AsyncFailedReactor
 
 from ..interfaces import IQueue
 from ..interfaces import IRedisQueue
+from ..interfaces import IAsyncReactor
+
 from ..redis_queue import RedisQueue
 
 # signal handlers
@@ -126,17 +129,18 @@ class Processor(object):
 			target = AsyncFailedReactor(queue_names=queue_names,
 										site_names=site_names,
 								  		queue_interface=queue_interface)
+			component.globalSiteManager.registerUtility(target, IAsyncReactor)
 			result = target()
 		else:
 			target = AsyncReactor(queue_names=queue_names,
 								  exitOnError=exit_on_error,
 								  site_names=site_names,
 								  queue_interface=queue_interface)
+			component.globalSiteManager.registerUtility(target, IAsyncReactor)
 			result = target(time.sleep)
 		sys.exit(result)
 
 	def extend_context(self, context):
-		## plugins
 		pass
 
 	def create_context(self, env_dir):
