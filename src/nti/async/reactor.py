@@ -45,17 +45,33 @@ class AsyncReactor(object):
 	def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
 				 queue_interface=IQueue, site_names=()):
 		self.site_names = site_names
-		self.queue_names = queue_names
 		self.exitOnError = exitOnError
 		self.generator = random.Random()
 		self.poll_interval = poll_interval
 		self.queue_interface = queue_interface
+		self.queue_names = list(queue_names or ())
 
 	@CachedProperty('queue_names')
 	def queues(self):
 		queues = [component.getUtility(self.queue_interface, name=x)
 				  for x in self.queue_names]
 		return queues
+
+	def add_queues(self, *queues):
+		registered=[]
+		for x in queues:
+			if 	x not in self.queue_names and \
+				component.queryUtility(self.queue_interface, name=x) != None:
+				registered.append(x)
+		self.queue_names.extend(registered)
+		return registered
+
+	def remove_queues(self, *queues):
+		for x in queues:
+			try:
+				self.queue_names.remove(x)
+			except ValueError:
+				pass
 
 	def halt(self):
 		self.stop = True
