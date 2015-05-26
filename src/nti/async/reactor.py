@@ -15,7 +15,10 @@ from functools import partial
 
 from zope import component
 from zope import interface
+
 from zope.component import ComponentLookupError
+
+from zope.event import notify
 
 from ZODB.POSException import ConflictError
 
@@ -27,6 +30,8 @@ from nti.zodb.interfaces import UnableToAcquireCommitLock
 
 from .interfaces import IQueue
 from .interfaces import IAsyncReactor
+from .interfaces import ReactorStarted
+from .interfaces import ReactorStopped
 
 @interface.implementer(IAsyncReactor)
 class AsyncReactor(object):
@@ -48,7 +53,7 @@ class AsyncReactor(object):
 
 	@CachedProperty('queue_names')
 	def queues(self):
-		queues = [component.getUtility(self.queue_interface, name=x) 
+		queues = [component.getUtility(self.queue_interface, name=x)
 				  for x in self.queue_names]
 		return queues
 
@@ -64,7 +69,7 @@ class AsyncReactor(object):
 			self.processor = self._spawn_job_processor()
 
 	def _get_job(self):
-		# These are basically priority queues. 
+		# These are basically priority queues.
 		# We should start at the beginning each time.
 		job = None
 		for queue in self.queues:
@@ -119,6 +124,7 @@ class AsyncReactor(object):
 		return result
 
 	def run(self, sleep=gevent.sleep):
+		notify(ReactorStarted(self))
 		self.generator.seed()
 		self.stop = False
 		try:
@@ -131,6 +137,7 @@ class AsyncReactor(object):
 				except KeyboardInterrupt:
 					break
 		finally:
+			notify(ReactorStopped(self))
 			logger.warn('Exiting reactor. Queues=(%s)', self.queue_names)
 			self.processor = None
 

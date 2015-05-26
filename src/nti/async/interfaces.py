@@ -9,6 +9,9 @@ __docformat__ = "restructuredtext en"
 
 from zope import interface
 
+from zope.interface.interfaces import ObjectEvent
+from zope.interface.interfaces import IObjectEvent
+
 from zope.location.interfaces import IContained
 
 from zope.annotation.interfaces import IAttributeAnnotatable
@@ -20,7 +23,7 @@ COMPLETED = u'Completed'
 
 class IError(interface.Interface):
 	message = interface.Attribute("""Error message""")
-	
+
 class IBaseQueue(IContained):
 
 	def put(item):
@@ -60,10 +63,10 @@ class IRedisQueue(IBaseQueue):
 
 class IJob(IAttributeAnnotatable, IContained):
 
-	id =  interface.Attribute("""job identifier.""")
-	
-	error =  interface.Attribute("""Any job execution error.""")
-	
+	id = interface.Attribute("""job identifier.""")
+
+	error = interface.Attribute("""Any job execution error.""")
+
 	result = interface.Attribute("""The result of the call. """)
 
 	callable = interface.Attribute(
@@ -93,4 +96,28 @@ class IAsyncReactor(interface.Interface):
 	marker interface for a reactor
 	"""
 
-	queue_names =  interface.Attribute("""Queue names.""")
+	queue_names = interface.Attribute("""Queue names.""")
+
+class IReactorEvent(IObjectEvent):
+	pass
+
+class IReactorStarted(IReactorEvent):
+	pass
+
+class IReactorStopped(IReactorEvent):
+	pass
+
+@interface.implementer(IReactorEvent)
+class ReactorEvent(ObjectEvent):
+
+	@property
+	def reactor(self):
+		return self.object
+
+@interface.implementer(IReactorStarted)
+class ReactorStarted(ReactorEvent):
+	pass
+
+@interface.implementer(IReactorStopped)
+class ReactorStopped(ReactorEvent):
+	pass
