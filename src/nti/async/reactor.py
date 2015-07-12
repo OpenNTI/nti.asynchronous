@@ -117,8 +117,6 @@ class AsyncReactor(object):
 		if self.site_names:
 			transaction_runner = partial(transaction_runner, site_names=self.site_names)
 
-		# TODO: We need to have the site draped off of the events, and then run
-		# within that site in the transaction_runner.
 		try:
 			if transaction_runner(self.execute_job, retries=2, sleep=1):
 				# Do not sleep if we have work to do, especially since
@@ -210,8 +208,6 @@ class AsyncFailedReactor(AsyncReactor):
 		transaction_runner = component.getUtility(ISiteTransactionRunner)
 		if self.site_names:
 			transaction_runner = partial(transaction_runner, site_names=self.site_names)
-		# TODO: We need to have the site draped off of the events, and then run
-		# within that site in the transaction_runner.
 		for queue in self.queues:
 			self.current_queue = queue
 			count = transaction_runner(self.execute_job, retries=2, sleep=1)
