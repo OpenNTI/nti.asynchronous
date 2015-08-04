@@ -16,6 +16,7 @@ import datetime
 from collections import Mapping
 
 from zope import interface
+
 from zope.container.contained import Contained
 
 from nti.common.property import alias
@@ -42,10 +43,10 @@ _status_mapping = {
 	FAILED_ID: FAILED,
 	COMPLETED_ID: COMPLETED}
 
-@interface.implementer(IJob)
 @WithRepr
+@interface.implementer(IJob)
 class Job(Contained):
-	
+
 	_id = None
 	_error = _active_start = _active_end = None
 	_status_id = _callable_name = _callable_root = _result = None
@@ -53,7 +54,7 @@ class Job(Contained):
 	error_adapter = IError
 
 	id = alias('_id')
-	
+
 	def __init__(self, *args, **kwargs):
 		self._status_id = NEW_ID
 		self._reset(*args, **kwargs)
@@ -92,7 +93,7 @@ class Job(Contained):
 	@property
 	def is_new(self):
 		return self._status_id == NEW_ID
-	
+
 	def _get_callable(self):
 		if self._callable_name is None:
 			return self._callable_root
@@ -137,30 +138,30 @@ class Job(Contained):
 			logger.exception("Job (%s) execution failed", self)
 		finally:
 			self._active_end = datetime.datetime.utcnow()
-			
+
 	def __eq__(self, other):
 		try:
 			return self is other or (self._id == other._id and self._id)
 		except AttributeError:
 			return NotImplemented
-		
+
 	def __hash__(self):
 		xhash = 47
-		xhash ^= hash(self._id) if self._id else int(id(self)/16)
+		xhash ^= hash(self._id) if self._id else int(id(self) / 16)
 		return xhash
 
 def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
 	assert jargs is None or isinstance(jargs, (tuple, list))
 	assert jkwargs is None or isinstance(jkwargs, Mapping)
-	jkwargs = jkwargs or {}	
-	jargs = [call] + list(jargs or ()) 
+	jkwargs = jkwargs or {}
+	jargs = [call] + list(jargs or ())
 	result = cls(*jargs, **jkwargs)
 	result.id = unicode(jobid or uuid.uuid4())
 	return result
-	
-@interface.implementer(IError)
+
 @WithRepr
 @EqHash('message')
+@interface.implementer(IError)
 class Error(Contained):
 
 	def __init__(self, message=u''):

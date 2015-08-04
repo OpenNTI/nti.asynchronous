@@ -58,7 +58,7 @@ class AsyncReactor(object):
 		return queues
 
 	def add_queues(self, *queues):
-		registered=[]
+		registered = []
 		for x in queues:
 			if 	x not in self.queue_names and \
 				component.queryUtility(self.queue_interface, name=x) != None:

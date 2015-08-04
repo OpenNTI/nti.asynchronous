@@ -9,12 +9,12 @@ __docformat__ = "restructuredtext en"
 
 from zope import interface
 
+from zope.annotation.interfaces import IAttributeAnnotatable
+
 from zope.interface.interfaces import ObjectEvent
 from zope.interface.interfaces import IObjectEvent
 
 from zope.location.interfaces import IContained
-
-from zope.annotation.interfaces import IAttributeAnnotatable
 
 NEW = u'New'
 FAILED = u'Failed'

@@ -11,8 +11,9 @@ logger = __import__('logging').getLogger(__name__)
 
 import zlib
 import pickle
-import transaction
 from io import BytesIO
+
+import transaction
 
 from zope import interface
 
@@ -36,9 +37,9 @@ class RedisQueue(object):
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
 		if create_failed_queue:
 			failed_queue_name = failed_queue_name or self._name + "/failed"
-			self._failed = RedisQueue( 	self.__redis,
-										job_queue_name=failed_queue_name,
-										create_failed_queue=False )
+			self._failed = RedisQueue(self.__redis,
+									  job_queue_name=failed_queue_name,
+									  create_failed_queue=False)
 		else:
 			self._failed = self
 
@@ -65,7 +66,7 @@ class RedisQueue(object):
 		# Only place the job once the transaction has been committed.
 		transactions.do(target=self,
 						call=self._put_job,
-						args=(pipe,data) )
+						args=(pipe, data))
 
 		return item
 
@@ -87,9 +88,9 @@ class RedisQueue(object):
 			raise IndexError(index)
 
 		data = self._redis.pipeline().\
-						   lrange(self._name, 0, index-1).\
+						   lrange(self._name, 0, index - 1).\
 						   lindex(self._name, index).\
-						   lrange(self._name, index+1,-1).\
+						   lrange(self._name, index + 1, -1).\
 						   execute()
 
 		result = data[1] if data and len(data) >= 2 and data[1] else None
@@ -141,7 +142,7 @@ class RedisQueue(object):
 		logger.debug("Job (%s) claimed", job.id)
 
 		# make sure we put the job back if the transaction fails
-		def after_commit_or_abort( success=False ):
+		def after_commit_or_abort(success=False):
 			if not success:
 				logger.warn("Pushing job back onto queue on abort [%s] (%s)",
 							self._name, job.id)
@@ -155,7 +156,7 @@ class RedisQueue(object):
 		self._redis.pipeline().delete(self._name).execute()
 
 	def putFailed(self, item):
-		self._failed.put( item )
+		self._failed.put(item)
 	put_failed = putFailed
 
 	def get_failed_queue(self):
@@ -190,4 +191,4 @@ class RedisQueue(object):
 		job = self._unpickle(data)
 		return job
 
-Queue = RedisQueue # alias
+Queue = RedisQueue  # alias

@@ -9,14 +9,15 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-import BTrees
-
 from zope import interface
+
 from zope.container.contained import Contained
 
 from zc.blist import BList
 
 from zc.queue import CompositeQueue
+
+import BTrees
 
 from persistent import Persistent
 

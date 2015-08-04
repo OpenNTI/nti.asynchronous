@@ -90,7 +90,8 @@ class Processor(object):
 
 	def load_library(self):
 		library = component.queryUtility(IContentPackageLibrary)
-		library.syncContentPackages()
+		if library is not None:
+			library.syncContentPackages()
 
 	def process_args(self, args):
 		self.set_log_formatter(args)
