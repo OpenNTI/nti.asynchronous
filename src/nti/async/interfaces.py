@@ -26,7 +26,7 @@ class IError(interface.Interface):
 
 class IBaseQueue(IContained):
 
-	def put(item):
+	def put(item, *kwargs):
 		"""
 		Put an IJob adapted from item into the queue.  Returns IJob.
 		"""
@@ -59,7 +59,9 @@ class IQueue(IBaseQueue, IAttributeAnnotatable):
 	pass
 
 class IRedisQueue(IBaseQueue):
-	pass
+
+	def put(item, tail=True):
+		pass
 
 class IJob(IAttributeAnnotatable, IContained):
 

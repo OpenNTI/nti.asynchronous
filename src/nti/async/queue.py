@@ -36,7 +36,7 @@ class Queue(Contained, Persistent):
 		self._length = BTrees.Length.Length(0)
 		self._queue = CompositeQueue(compositeSize=compositeSize)
 		
-	def put(self, item):
+	def put(self, item, *args, **kwargs):
 		item = IJob(item)
 		self._queue.put(item)
 		item.__parent__ = self

@@ -41,7 +41,7 @@ _status_mapping = {
 	NEW_ID : NEW,
 	ACTIVE_ID: ACTIVE,
 	FAILED_ID: FAILED,
-	COMPLETED_ID: COMPLETED}
+	COMPLETED_ID: COMPLETED }
 
 @WithRepr
 @interface.implementer(IJob)
