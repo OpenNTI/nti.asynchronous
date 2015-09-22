@@ -60,16 +60,19 @@ class RedisQueue(object):
 		else:
 			pipe.lpush(self._name, data).execute()
 
-	def put(self, item, tail=True):
+	def put(self, item, use_transactions=True, tail=True):
 		item = IJob(item)
 		data = self._pickle(item)
 		pipe = self._redis.pipeline()
 		logger.debug('Placing job (%s) in [%s]', item.id, self._name)
 
-		# Only place the job once the transaction has been committed.
-		transactions.do(target=self,
-						call=self._put_job,
-						args=(pipe, data, tail))
+		if use_transactions:
+			# Only place the job once the transaction has been committed.
+			transactions.do(target=self,
+							call=self._put_job,
+							args=(pipe, data, tail))
+		else:
+			self._put_job(pipe, data, tail)
 
 		return item
 

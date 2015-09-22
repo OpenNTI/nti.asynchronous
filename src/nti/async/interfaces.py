@@ -60,7 +60,7 @@ class IQueue(IBaseQueue, IAttributeAnnotatable):
 
 class IRedisQueue(IBaseQueue):
 
-	def put(item, tail=True):
+	def put(item, use_transactions=True, tail=True):
 		pass
 
 class IJob(IAttributeAnnotatable, IContained):
