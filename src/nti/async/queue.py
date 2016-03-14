@@ -21,8 +21,8 @@ import BTrees
 
 from persistent import Persistent
 
-from .interfaces import IJob
-from .interfaces import IQueue
+from nti.async.interfaces import IJob
+from nti.async.interfaces import IQueue
 
 @interface.implementer(IQueue)
 class Queue(Contained, Persistent):
@@ -35,7 +35,7 @@ class Queue(Contained, Persistent):
 	def _reset(self, compositeSize=15):
 		self._length = BTrees.Length.Length(0)
 		self._queue = CompositeQueue(compositeSize=compositeSize)
-		
+
 	def put(self, item, *args, **kwargs):
 		item = IJob(item)
 		self._queue.put(item)
@@ -56,7 +56,7 @@ class Queue(Contained, Persistent):
 			else:
 				active = True
 			return active, next_
-		
+
 		q_active, (q_index, q_next) = get_next(q)
 		if q_active:
 			yield q_pop, q_index, q_next

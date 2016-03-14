@@ -7,6 +7,8 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
+logger = __import__('logging').getLogger(__name__)
+
 from zope import interface
 
 from zope.annotation.interfaces import IAttributeAnnotatable
@@ -16,9 +18,16 @@ from zope.interface.interfaces import IObjectEvent
 
 from zope.location.interfaces import IContained
 
+#: New job code
 NEW = u'New'
+
+#: Failed job code
 FAILED = u'Failed'
+
+#: Active Job code
 ACTIVE = u'Active'
+
+#: Completed job code
 COMPLETED = u'Completed'
 
 class IError(interface.Interface):

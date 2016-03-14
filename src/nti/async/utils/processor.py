@@ -20,22 +20,22 @@ import zope.exceptions
 
 from zope import component
 
-from nti.dataserver.utils import run_with_dataserver
-from nti.dataserver.utils.base_script import create_context
+from nti.async.interfaces import IQueue
+from nti.async.interfaces import IRedisQueue
+from nti.async.interfaces import IAsyncReactor
+
+from nti.async.reactor import AsyncReactor
+from nti.async.reactor import AsyncFailedReactor
+
+from nti.async.redis_queue import RedisQueue
+
+from nti.contentlibrary.interfaces import IContentPackageLibrary
 
 from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
-from nti.contentlibrary.interfaces import IContentPackageLibrary
-
-from ..reactor import AsyncReactor
-from ..reactor import AsyncFailedReactor
-
-from ..interfaces import IQueue
-from ..interfaces import IRedisQueue
-from ..interfaces import IAsyncReactor
-
-from ..redis_queue import RedisQueue
+from nti.dataserver.utils import run_with_dataserver
+from nti.dataserver.utils.base_script import create_context
 
 # signal handlers
 
@@ -54,25 +54,25 @@ class Processor(object):
 	conf_package = 'nti.appserver'
 
 	processor_name = "Async processor"
-	
+
 	def add_arg_parser_arguments(self, arg_parser):
 		arg_parser.add_argument('-v', '--verbose', help="Be verbose",
 								 action='store_true', dest='verbose')
 		arg_parser.add_argument('-l', '--library', help="Load library packages",
 								action='store_true', dest='library')
-		arg_parser.add_argument('-n', '--name', help="Queue name", 
+		arg_parser.add_argument('-n', '--name', help="Queue name",
 								default=u'', dest='name')
 		arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
 								dest='queue_names')
 		arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
-								 default=True, dest='exit_error',action='store_false')
+								 default=True, dest='exit_error', action='store_false')
 		arg_parser.add_argument('--site', dest='site', help="Application SITE")
 		arg_parser.add_argument('--redis', help="Use redis queues",
 								 action='store_true', dest='redis')
 		arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
 								 action='store_true', dest='failed_jobs')
 		return arg_parser
-	
+
 	def create_arg_parser(self):
 		arg_parser = argparse.ArgumentParser(description=self.processor_name)
 		return self.add_arg_parser_arguments(arg_parser)
@@ -100,7 +100,7 @@ class Processor(object):
 		queue_names = getattr(args, 'queue_names', None)
 
 		if not name and not queue_names:
-			raise ValueError('No queue name(s) passed in' )
+			raise ValueError('No queue name(s) passed in')
 
 		if name and not queue_names:
 			queue_names = [name]
@@ -112,9 +112,9 @@ class Processor(object):
 		else:
 			queue_interface = IQueue
 
-		failed_jobs = getattr( args, 'failed_jobs', False)
+		failed_jobs = getattr(args, 'failed_jobs', False)
 
-		if getattr( args, 'library', False ):
+		if getattr(args, 'library', False):
 			transaction_runner = component.getUtility(IDataserverTransactionRunner)
 			transaction_runner(self.load_library)
 			logger.info("Library loaded")
@@ -123,7 +123,7 @@ class Processor(object):
 		if site:
 			logger.info("Using site %s", site)
 		site_names = (site,) if site else ()
-		
+
 		exit_on_error = getattr(args, 'exit_error', True)
 
 		if failed_jobs:
@@ -146,7 +146,7 @@ class Processor(object):
 
 	def create_context(self, env_dir):
 		context = create_context(env_dir, with_library=True)
-		self.extend_context( context )
+		self.extend_context(context)
 		return context
 
 	def __call__(self, *args, **kwargs):

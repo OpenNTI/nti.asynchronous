@@ -11,14 +11,14 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import component
 
-from .job import create_job as job_creator
+from nti.async.interfaces import IQueue
 
-from .interfaces import IQueue
+from nti.async.job import create_job as job_creator
 
 def get_job_queue(name=u'', queue_interface=IQueue):
-    result = component.queryUtility(queue_interface, name=name)
-    return result
+	result = component.queryUtility(queue_interface, name=name)
+	return result
 
 def create_job(func, *args, **kwargs):
-    result = job_creator(func, jargs=args, jkwargs=kwargs)
-    return result
+	result = job_creator(func, jargs=args, jkwargs=kwargs)
+	return result

@@ -17,12 +17,12 @@ import transaction
 
 from zope import interface
 
+from nti.async.interfaces import IJob
+from nti.async.interfaces import IRedisQueue
+
 from nti.common.property import Lazy
 
 from nti.transactions import transactions
-
-from .interfaces import IJob
-from .interfaces import IRedisQueue
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 

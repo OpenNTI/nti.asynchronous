@@ -24,13 +24,13 @@ from nti.common.representation import WithRepr
 
 from nti.schema.schema import EqHash
 
-from .interfaces import NEW
-from .interfaces import ACTIVE
-from .interfaces import FAILED
-from .interfaces import COMPLETED
+from nti.async.interfaces import NEW
+from nti.async.interfaces import ACTIVE
+from nti.async.interfaces import FAILED
+from nti.async.interfaces import COMPLETED
 
-from .interfaces import IJob
-from .interfaces import IError
+from nti.async.interfaces import IJob
+from nti.async.interfaces import IError
 
 NEW_ID = 0
 ACTIVE_ID = 1

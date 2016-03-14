@@ -13,9 +13,9 @@ from zope import interface
 
 from zope.exceptions.exceptionformatter import format_exception
 
-from .job import Error
+from nti.async.interfaces import IError
 
-from .interfaces import IError
+from nti.async.job import Error
 
 @interface.implementer(IError)
 def _default_error_adapter(e):
