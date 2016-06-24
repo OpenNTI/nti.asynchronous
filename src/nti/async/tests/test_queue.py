@@ -75,6 +75,12 @@ class TestQueue(AsyncTestCase):
 		queue.put(job5)
 		assert_that(list(queue), is_([job4, job5]))
 
+		data = queue.all()
+		assert_that(data, has_length(2))
+		
+		data = queue.failed()
+		assert_that(data, has_length(0))
+
 		first = queue[0]
 		assert_that(queue.pull(0), equal_to(first))
 

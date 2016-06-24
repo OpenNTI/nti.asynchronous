@@ -118,6 +118,9 @@ class Queue(Contained, Persistent):
 		self._failed_jobs.append(item)
 	put_failed = putFailed
 
+	def failed(self):
+		return list(self._failed_jobs) if self._failed_jobs else ()
+
 	def __len__(self):
 		return self._length()
 

@@ -124,6 +124,9 @@ class TesRedistQueue(AsyncTestCase):
 		
 		data = queue.all(unpickle=True)
 		assert_that(data, has_length( 2 ) )
+		
+		data = queue.failed(unpickle=True)
+		assert_that(data, has_length( 0 ) )
 
 		queue.empty()
 		assert_that(queue, has_length( 0 ) )

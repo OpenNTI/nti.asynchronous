@@ -177,6 +177,11 @@ class RedisQueue(object):
 	def get_failed_queue(self):
 		return self._failed
 
+	def failed(self, unpickle=True):
+		if self._failed is not self:
+			return self._failed.all(unpickle)
+		return ()
+
 	def __str__(self):
 		return self._name
 

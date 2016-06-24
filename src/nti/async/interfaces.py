@@ -68,6 +68,10 @@ class IBaseQueue(IContained):
 		"""
 		Stores a failed job for review
 		"""
+	def failed():
+		"""
+		Return all failed jobs in this queue
+		"""
 
 class IQueue(IBaseQueue, IAttributeAnnotatable):
 	pass
@@ -78,6 +82,9 @@ class IRedisQueue(IBaseQueue):
 		pass
 	
 	def all(unpickle=True):
+		pass
+	
+	def failed(unpickle=True):
 		pass
 
 class IJob(IAttributeAnnotatable, IContained):
