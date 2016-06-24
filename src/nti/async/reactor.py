@@ -60,26 +60,29 @@ class AsyncReactor(object):
 	def add_queues(self, *queues):
 		registered = []
 		for x in queues:
-			if 	x not in self.queue_names and \
-				component.queryUtility(self.queue_interface, name=x) != None:
+			if 		x not in self.queue_names \
+				and component.queryUtility(self.queue_interface, name=x) != None:
 				registered.append(x)
 		self.queue_names.extend(registered)
 		return registered
-
+	addQueues = add_queues
+	
 	def remove_queues(self, *queues):
 		for x in queues:
 			try:
 				self.queue_names.remove(x)
 			except ValueError:
 				pass
-
+	removeQueues = remove_queues
+	
 	def halt(self):
 		self.stop = True
 
 	@property
 	def isRunning(self):
 		return not self.stop and self.processor != None
-
+	is_running = isRunning
+	
 	def start(self):
 		if self.processor is None:
 			self.processor = self._spawn_job_processor()
@@ -109,7 +112,8 @@ class AsyncReactor(object):
 		logger.debug("[%s] Job %s has been executed", self.current_queue, job.id)
 
 		return True
-
+	executeJob = execute_job
+	
 	def process_job(self):
 		result = True
 
@@ -136,7 +140,8 @@ class AsyncReactor(object):
 			logger.exception('Cannot execute job. Queue=[%s]', self.current_queue)
 			result = not self.exitOnError
 		return result
-
+	processJob = process_job
+	
 	def run(self, sleep=gevent.sleep):
 		notify(ReactorStarted(self))
 		self.generator.seed()

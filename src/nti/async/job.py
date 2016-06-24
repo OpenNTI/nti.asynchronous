@@ -114,8 +114,8 @@ class Job(Contained):
 		else:
 			self._callable_root, self._callable_name = value, None
 
-		if (IJob.providedBy(self._callable_root) and
-			self._callable_root.__parent__ is None):
+		if (	IJob.providedBy(self._callable_root) 
+			and self._callable_root.__parent__ is None):
 			self._callable_root.__parent__ = self
 
 	callable = property (_get_callable, _set_callable)
