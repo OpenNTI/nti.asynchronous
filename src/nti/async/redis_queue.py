@@ -131,7 +131,6 @@ class RedisQueue(object):
 		if data is None:
 			raise IndexError(index)
 		job = self._unpickle(data)
-
 		return job
 
 	def all(self, unpickle=True):

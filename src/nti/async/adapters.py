@@ -24,10 +24,11 @@ def _default_error_adapter(e):
 @interface.implementer(IError)
 def _default_exc_info(exc_info):
 	t, v, tb = exc_info
-	lines = format_exception(t, v, tb, with_filenames=True)
+	lines = format_exception(t, v, tb, with_filenames=True) or ()
 	if isinstance(str(''), bytes):
 		lines = [l.encode('utf-8', 'replace') if isinstance(l, unicode) else l for l in lines]
 	else:
 		lines = [l.decode('utf-8', 'replace') if isinstance(l, bytes) else l for l in lines]
 	message = str('').join(lines)
-	return Error(message)
+	result = Error(message)
+	return result
