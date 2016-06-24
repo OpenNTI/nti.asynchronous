@@ -99,7 +99,10 @@ class Queue(Contained, Persistent):
 		return default
 
 	def all(self):
-		return list(self._iter())
+		result = []
+		for _, _, job in list(self._iter()): # snapshot
+			result.append(job)
+		return result
 	values = all
 
 	def empty(self):
