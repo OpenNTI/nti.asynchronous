@@ -47,7 +47,7 @@ class IBaseQueue(IContained):
 		Raise IndexError if index does not exist.
 		"""
 	
-	def all(self):
+	def all():
 		"""
 		Return all elements in this queue
 		"""
