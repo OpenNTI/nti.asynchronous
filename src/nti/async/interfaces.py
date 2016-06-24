@@ -46,7 +46,12 @@ class IBaseQueue(IContained):
 
 		Raise IndexError if index does not exist.
 		"""
-
+	
+	def all(self):
+		"""
+		Return all elements in this queue
+		"""
+	
 	def remove(item):
 		"""
 		Removes item from queue or raises LookupError if not found.
@@ -70,6 +75,9 @@ class IQueue(IBaseQueue, IAttributeAnnotatable):
 class IRedisQueue(IBaseQueue):
 
 	def put(item, use_transactions=True, tail=True):
+		pass
+	
+	def all(unpickle=True):
 		pass
 
 class IJob(IAttributeAnnotatable, IContained):

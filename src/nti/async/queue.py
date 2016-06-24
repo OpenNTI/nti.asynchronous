@@ -98,6 +98,10 @@ class Queue(Contained, Persistent):
 			return job
 		return default
 
+	def all(self):
+		return list(self._iter())
+	values = all
+
 	def empty(self):
 		result = self._length()
 		if result:

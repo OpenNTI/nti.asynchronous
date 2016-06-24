@@ -134,6 +134,16 @@ class RedisQueue(object):
 
 		return job
 
+	def all(self, unpickle=True):
+		data = self._redis.pipeline().lrange(self._name, 0, -1).execute()
+		data = data[0] if data and data[0] else None
+		if unpickle:
+			result = [self._unpickle(x) for x in data or ()]
+		else:
+			result = data or ()
+		return result
+	values = all
+
 	def remove(self, item):
 		# jobs are pickled
 		raise NotImplementedError()

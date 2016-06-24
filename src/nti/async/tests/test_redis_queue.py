@@ -19,12 +19,13 @@ import transaction
 from nti.async.job import create_job
 from nti.async.redis_queue import RedisQueue
 
-from nti.async.tests import AsyncTestCase
-
 from nti.transactions import transactions
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
+
 from nti.app.testing.decorators import WithSharedApplicationMockDS
+
+from nti.async.tests import AsyncTestCase
 
 from nti.dataserver.tests import mock_dataserver
 from nti.dataserver.tests.mock_redis import InMemoryMockRedis
@@ -117,6 +118,12 @@ class TesRedistQueue(AsyncTestCase):
 		assert_that(queue.put(last), equal_to(last))
 		transaction.commit()
 		assert_that(queue, has_length( 2 ) )
+
+		data = queue.all(unpickle=False)
+		assert_that(data, has_length( 2 ) )
+		
+		data = queue.all(unpickle=True)
+		assert_that(data, has_length( 2 ) )
 
 		queue.empty()
 		assert_that(queue, has_length( 0 ) )
