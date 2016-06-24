@@ -19,11 +19,6 @@ from zope import interface
 
 from zope.container.contained import Contained
 
-from nti.common.property import alias
-from nti.common.representation import WithRepr
-
-from nti.schema.schema import EqHash
-
 from nti.async.interfaces import NEW
 from nti.async.interfaces import ACTIVE
 from nti.async.interfaces import FAILED
@@ -31,6 +26,11 @@ from nti.async.interfaces import COMPLETED
 
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
+
+from nti.common.property import alias
+from nti.common.representation import WithRepr
+
+from nti.schema.schema import EqHash
 
 NEW_ID = 0
 ACTIVE_ID = 1
@@ -41,7 +41,8 @@ _status_mapping = {
 	NEW_ID : NEW,
 	ACTIVE_ID: ACTIVE,
 	FAILED_ID: FAILED,
-	COMPLETED_ID: COMPLETED }
+	COMPLETED_ID: COMPLETED 
+}
 
 @WithRepr
 @interface.implementer(IJob)
@@ -89,10 +90,12 @@ class Job(Contained):
 	@property
 	def is_success(self):
 		return self._status_id == COMPLETED_ID
-
+	isSuccess = is_success
+	
 	@property
 	def is_new(self):
 		return self._status_id == NEW_ID
+	isNew = is_new
 
 	def _get_callable(self):
 		if self._callable_name is None:
@@ -123,7 +126,8 @@ class Job(Contained):
 		effective_args[0:0] = self.args
 		effective_kwargs = dict(self.kwargs)
 		effective_kwargs.update(kwargs)
-		__traceback_info__ = self._callable_root, self._callable_name, \
+		__traceback_info__ = self._callable_root, \
+							 self._callable_name, \
 							 effective_args, effective_kwargs
 		try:
 			self._status_id = ACTIVE_ID
@@ -133,8 +137,8 @@ class Job(Contained):
 			return result
 		except Exception as e:
 			self._status_id = FAILED_ID
-			self._error = self.error_adapter(sys.exc_info(), None) or \
-						  self.error_adapter(e, None)
+			self._error = 	 self.error_adapter(sys.exc_info(), None) \
+						  or self.error_adapter(e, None)
 			logger.exception("Job (%s) execution failed", self)
 		finally:
 			self._active_end = datetime.datetime.utcnow()
