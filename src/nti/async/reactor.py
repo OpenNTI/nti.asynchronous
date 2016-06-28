@@ -32,6 +32,7 @@ from nti.common.property import CachedProperty
 from nti.site.interfaces import ISiteTransactionRunner
 
 from nti.zodb.interfaces import UnableToAcquireCommitLock
+from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
 @interface.implementer(IAsyncReactor)
 class AsyncReactor(object):
@@ -133,7 +134,7 @@ class AsyncReactor(object):
 			logger.error('Error while processing job. Queue=[%s], error=%s',
 						 self.current_queue, e)
 			result = False
-		except (ConflictError, UnableToAcquireCommitLock) as e:
+		except (ConflictError, UnableToAcquireCommitLock, ZODBUnableToAcquireCommitLock) as e:
 			logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
 						 self.current_queue, e)
 		except:
