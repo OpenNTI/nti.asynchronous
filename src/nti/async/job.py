@@ -28,9 +28,10 @@ from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
 
 from nti.common.property import alias
-from nti.common.representation import WithRepr
 
-from nti.schema.schema import EqHash
+from nti.externalization.representation import WithRepr
+
+from nti.schema.eqhash import EqHash
 
 NEW_ID = 0
 ACTIVE_ID = 1
