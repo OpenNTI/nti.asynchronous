@@ -27,7 +27,7 @@ from nti.async.interfaces import IAsyncReactor
 from nti.async.interfaces import ReactorStarted
 from nti.async.interfaces import ReactorStopped
 
-from nti.common.property import CachedProperty
+from nti.property.property import CachedProperty
 
 from nti.site.interfaces import ISiteTransactionRunner
 

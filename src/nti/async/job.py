@@ -27,9 +27,9 @@ from nti.async.interfaces import COMPLETED
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
 
-from nti.common.property import alias
-
 from nti.externalization.representation import WithRepr
+
+from nti.property.property import alias
 
 from nti.schema.eqhash import EqHash
 

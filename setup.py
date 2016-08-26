@@ -57,7 +57,7 @@ setup(
 		'zope.interface',
 		'zope.location',
 		'zope.security',
-		'nti.common',
+		'nti.property',
 		'nti.site',
 		'nti.schema',
 		'nti.transactions',

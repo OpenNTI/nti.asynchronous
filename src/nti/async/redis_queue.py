@@ -20,7 +20,7 @@ from zope import interface
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IRedisQueue
 
-from nti.common.property import Lazy
+from nti.property.property import Lazy
 
 from nti.transactions import transactions
 
