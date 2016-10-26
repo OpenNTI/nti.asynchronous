@@ -57,11 +57,12 @@ class RedisQueue(object):
 
 	def _put_job(self, pipe, data, tail=True, jid=None):
 		if tail:
-			pipe.rpush(self._name, data).execute()
+			pipe.rpush(self._name, data)
 		else:
-			pipe.lpush(self._name, data).execute()
+			pipe.lpush(self._name, data)
 		if jid is not None:
 			pipe.hset(self._hash, jid, '1')
+		pipe.execute()
 
 	def put(self, item, use_transactions=True, tail=True):
 		item = IJob(item)
@@ -86,8 +87,7 @@ class RedisQueue(object):
 		return result
 
 	def _hdel(self, job):
-		if IJob.providedBy(job) and job.id:
-			self._redis.pipeline().hdel(self._hash, job.id).execute()
+		self._redis.pipeline().hdel(self._hash, job.id).execute()
 
 	def removeAt(self, index, unpickle=True):
 		length = len(self)
@@ -178,8 +178,10 @@ class RedisQueue(object):
 
 	def empty(self):
 		keys = self._redis.pipeline().delete(self._name).hkeys(self._hash).execute()
-		if keys:
-			self._redis.pipeline().hdel(self._hash, *keys[0])
+		if keys and keys[1]:
+			self._redis.pipeline().hdel(self._hash, *keys[1]).execute()
+			return keys[1]
+		return ()
 
 	def putFailed(self, item):
 		self._failed.put(item)

@@ -94,20 +94,24 @@ class TesRedistQueue(AsyncTestCase):
 		job7 = queue.put(create_job(operator.mul, jargs=(34, 1)))
 		transaction.commit()
 		assert_that(queue, has_length(4))
-
+		assert_that(queue.keys(), has_length( 4 ) )
+		
 		removed = queue.removeAt(2)
 		assert_that(removed, equal_to(job6))
 		assert_that(queue, has_length(3))
 		assert_that(list(queue), is_([job4, job5, job7]))
-
+		assert_that(queue.keys(), has_length( 3 ) )
+		
 		queue.empty()
 		assert_that(queue, has_length(0))
+		assert_that(queue.keys(), has_length( 0 ) )
 
 		queue.put(job4)
 		queue.put(job5)
 		transaction.commit()
 		assert_that(list(queue), is_([job4, job5]))
-
+		assert_that(queue.keys(), has_length( 2 ) )
+		
 		first = queue[0]
 		assert_that(queue.pull(0), equal_to(first))
 
@@ -120,6 +124,9 @@ class TesRedistQueue(AsyncTestCase):
 		assert_that(queue, has_length( 2 ) )
 
 		data = queue.all(unpickle=False)
+		assert_that(data, has_length( 2 ) )
+		
+		data = queue.keys()
 		assert_that(data, has_length( 2 ) )
 		
 		data = queue.all(unpickle=True)
