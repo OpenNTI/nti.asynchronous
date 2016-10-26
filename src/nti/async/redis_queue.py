@@ -209,6 +209,10 @@ class RedisQueue(object):
 		result = self._redis.pipeline().hkeys(self._hash).execute()
 		return result[0] if result else ()
 
+	def __contains__(self, key):
+		result = self._redis.pipeline().hexists(self._hash, key).execute()
+		return bool(result[0]) if result else False
+
 	def __iter__(self):
 		all_jobs = self._redis.pipeline().lrange(self._name, 0, -1).execute()
 		all_jobs = all_jobs[0] if all_jobs else ()

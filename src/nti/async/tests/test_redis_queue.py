@@ -8,10 +8,11 @@ __docformat__ = "restructuredtext en"
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
+from hamcrest import is_in
+from hamcrest import not_none
 from hamcrest import equal_to
 from hamcrest import has_length
 from hamcrest import assert_that
-from hamcrest import not_none
 
 import operator
 import transaction
@@ -95,7 +96,8 @@ class TesRedistQueue(AsyncTestCase):
 		transaction.commit()
 		assert_that(queue, has_length(4))
 		assert_that(queue.keys(), has_length( 4 ) )
-		
+		assert_that(job7.id, is_in(queue))
+
 		removed = queue.removeAt(2)
 		assert_that(removed, equal_to(job6))
 		assert_that(queue, has_length(3))
