@@ -35,6 +35,7 @@ class RedisQueue(object):
 				 create_failed_queue=True):
 		self.__redis = redis
 		self._name = job_queue_name or DEFAULT_QUEUE_NAME
+		self._hash = self._name + '/hash'
 		if create_failed_queue:
 			failed_queue_name = failed_queue_name or self._name + "/failed"
 			self._failed = RedisQueue(self.__redis,
@@ -54,26 +55,26 @@ class RedisQueue(object):
 		result = zlib.compress(bio.read())
 		return result
 
-	def _put_job(self, pipe, data, tail=True):
+	def _put_job(self, pipe, data, tail=True, jid=None):
 		if tail:
 			pipe.rpush(self._name, data).execute()
 		else:
 			pipe.lpush(self._name, data).execute()
+		if jid is not None:
+			pipe.hset(self._hash, jid, '1')
 
 	def put(self, item, use_transactions=True, tail=True):
 		item = IJob(item)
 		data = self._pickle(item)
 		pipe = self._redis.pipeline()
 		logger.debug('Placing job (%s) in [%s]', item.id, self._name)
-
 		if use_transactions:
 			# Only place the job once the transaction has been committed.
 			transactions.do(target=self,
 							call=self._put_job,
-							args=(pipe, data, tail))
+							args=(pipe, data, tail, item.id))
 		else:
-			self._put_job(pipe, data, tail)
-
+			self._put_job(pipe, data, tail, item.id)
 		return item
 
 	def _unpickle(self, data):
@@ -83,6 +84,10 @@ class RedisQueue(object):
 		result = pickle.load(bio)
 		assert IJob.providedBy(result)
 		return result
+
+	def _hdel(self, job):
+		if IJob.providedBy(job) and job.id:
+			self._redis.pipeline().hdel(self._hash, job.id).execute()
 
 	def removeAt(self, index, unpickle=True):
 		length = len(self)
@@ -115,6 +120,7 @@ class RedisQueue(object):
 						execute()
 
 		result = self._unpickle(result) if unpickle else result
+		self._hdel(result) # unset
 		return result
 
 	def pull(self, index=0):
@@ -131,6 +137,7 @@ class RedisQueue(object):
 		if data is None:
 			raise IndexError(index)
 		job = self._unpickle(data)
+		self._hdel(job) # unset
 		return job
 
 	def all(self, unpickle=True):
@@ -154,6 +161,7 @@ class RedisQueue(object):
 			return default
 
 		job = self._unpickle(data[0])
+		self._hdel(job) # unset
 		logger.debug("Job (%s) claimed", job.id)
 
 		# make sure we put the job back if the transaction fails
@@ -163,12 +171,15 @@ class RedisQueue(object):
 							self._name, job.id)
 				# We do not want to claim any jobs on transaction abort.
 				# Add our job back to the front of the queue.
-				self._redis.pipeline().lpush(self._name, data[0]).execute()
+				self._redis.pipeline().lpush(self._name, data[0]) \
+									  .hset(self._hash, job.id, '1').execute()
 		transaction.get().addAfterCommitHook(after_commit_or_abort)
 		return job
 
 	def empty(self):
-		self._redis.pipeline().delete(self._name).execute()
+		keys = self._redis.pipeline().delete(self._name).hkeys(self._hash).execute()
+		if keys:
+			self._redis.pipeline().hdel(self._hash, *keys[0])
 
 	def putFailed(self, item):
 		self._failed.put(item)
@@ -191,6 +202,10 @@ class RedisQueue(object):
 	def __len__(self):
 		result = self._redis.pipeline().llen(self._name).execute()
 		return result[0] if result and result[0] is not None else 0
+
+	def keys(self):
+		result = self._redis.pipeline().hkeys(self._hash).execute()
+		return result[0] if result else ()
 
 	def __iter__(self):
 		all_jobs = self._redis.pipeline().lrange(self._name, 0, -1).execute()
