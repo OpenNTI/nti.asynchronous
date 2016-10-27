@@ -15,8 +15,10 @@ from hamcrest import has_length
 
 import operator
 
-from nti.async.job import Job
+from nti.async.job import create_job
+
 from nti.async.queue import Queue
+
 from nti.async.reactor import AsyncReactor
 
 from nti.async.tests import AsyncTestCase
@@ -43,8 +45,8 @@ class TestReactor(AsyncTestCase):
 		q1 = Queue()
 		q2 = Queue()
 		q3 = Queue()
-		job1 = q3.put(Job(operator.mul, 7, 6))
-		job2 = q3.put(Job(operator.mul, 14, 3))
+		job1 = q3.put(create_job(operator.mul, (7, 6)))
+		job2 = q3.put(create_job(operator.mul, (14, 3)))
 		self.reactor.queues = [q1,q2,q3]
 
 		job = self.reactor._get_job()
@@ -62,8 +64,8 @@ class TestReactor(AsyncTestCase):
 		q1 = Queue()
 		q2 = Queue()
 		q3 = Queue()
-		job1 = q3.put(Job(operator.mul, 7, 6))
-		job2 = q3.put(Job(operator.mul, 14, 3))
+		job1 = q3.put(create_job(operator.mul, (7, 6)))
+		job2 = q3.put(create_job(operator.mul, (14, 3)))
 		self.reactor.queues = [q1,q2,q3]
 
 		job = self.reactor._get_job()
@@ -71,8 +73,8 @@ class TestReactor(AsyncTestCase):
 		assert_that( job, is_( job1 ))
 
 		# Job in first queue processed first
-		job3 = q1.put(Job(operator.mul, 7, 6))
-		job4 = q2.put(Job(operator.mul, 14, 3))
+		job3 = q1.put(create_job(operator.mul, (7, 6)))
+		job4 = q2.put(create_job(operator.mul, (14, 3)))
 
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
@@ -91,8 +93,8 @@ class TestReactor(AsyncTestCase):
 		assert_that( job, none() )
 
 		# And again
-		job5 = q3.put(Job(operator.mul, 7, 6))
-		job6 = q1.put(Job(operator.mul, 14, 3))
+		job5 = q3.put(create_job(operator.mul, (7, 6)))
+		job6 = q1.put(create_job(operator.mul, (14, 3)))
 		job = self.reactor._get_job()
 		assert_that( job, not_none() )
 		assert_that( job, is_( job6 ))

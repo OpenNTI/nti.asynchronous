@@ -19,8 +19,10 @@ import sys
 import pickle
 from io import BytesIO
 
-from nti.async.job import Job
+from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
+
+from nti.async.job import Job
 
 from nti.async.tests import AsyncTestCase
 
@@ -51,6 +53,10 @@ class TestJob(AsyncTestCase):
 		result = job()
 		assert_that(result, is_('my result'))
 		
+	def test_adapter(self):
+		job = IJob(call, None)
+		assert_that(job, is_not(none()))
+
 	def test_demo(self):
 		demo = Demo()
 		assert_that(demo, has_property('counter', is_(0)))

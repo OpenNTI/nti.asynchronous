@@ -72,6 +72,16 @@ class IBaseQueue(IContained):
 		"""
 		Return all failed jobs in this queue
 		"""
+		
+	def keys():
+		"""
+		return all keys in this queue
+		"""
+
+	def __contains__(key):
+		"""
+		Check if the specified key is in this queue
+		"""
 
 class IQueue(IBaseQueue, IAttributeAnnotatable):
 	pass
@@ -86,16 +96,6 @@ class IRedisQueue(IBaseQueue):
 	
 	def failed(unpickle=True):
 		pass
-
-	def keys():
-		"""
-		return all keys in this queue
-		"""
-
-	def __contains__(key):
-		"""
-		Check if the specified key is in this queue
-		"""
 
 class IJob(IAttributeAnnotatable, IContained):
 

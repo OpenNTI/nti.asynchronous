@@ -8,6 +8,7 @@ __docformat__ = "restructuredtext en"
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
+from hamcrest import is_in
 from hamcrest import equal_to
 from hamcrest import has_length
 from hamcrest import assert_that
@@ -15,7 +16,8 @@ from hamcrest import has_property
 
 import operator
 
-from nti.async.job import Job
+from nti.async.job import create_job
+
 from nti.async.queue import Queue
 
 from nti.async.tests import AsyncTestCase
@@ -32,24 +34,27 @@ class TestQueue(AsyncTestCase):
 
 	def test_mockwork(self):
 		queue = Queue()
-		job = queue.put(mock_work)
+		job = queue.put(create_job(mock_work))
 		assert_that(queue, has_length(1))
 		assert_that(list(queue), is_([job]))
 		assert_that(queue[0], is_(job))
 		assert_that(bool(queue), is_(True))
+		assert_that(job.id, is_in(queue))
+		assert_that(queue.keys(), has_length(1))
 		assert_that(job, has_property('__parent__', queue))
 		claimed = queue.claim()
 		assert_that(claimed, equal_to(job))
 		assert_that(queue, has_length(0))
 		assert_that(list(queue), is_([]))
+		assert_that(queue.keys(), has_length(0))
 
 	def test_operator(self):
 		queue = Queue()
-		job2 = queue.put(Job(operator.mul, 7, 6))
+		job2 = queue.put(create_job(operator.mul, (7, 6)))
 		assert_that(queue, has_length(1))
-		job3 = queue.put(Job(operator.mul, 14, 3))
-		job4 = queue.put(Job(operator.mul, 21, 2))
-		job5 = queue.put(Job(operator.mul, 42, 1))
+		job3 = queue.put(create_job(operator.mul, (14, 3)))
+		job4 = queue.put(create_job(operator.mul, (21, 2)))
+		job5 = queue.put(create_job(operator.mul, (42, 1)))
 		assert_that(queue, has_length(4))
 		assert_that(list(queue), is_([job2, job3, job4, job5]))
 		claimed = queue.claim()
@@ -77,6 +82,7 @@ class TestQueue(AsyncTestCase):
 
 		data = queue.all()
 		assert_that(data, has_length(2))
+		assert_that(queue.keys(), has_length(2))
 		
 		data = queue.failed()
 		assert_that(data, has_length(0))
