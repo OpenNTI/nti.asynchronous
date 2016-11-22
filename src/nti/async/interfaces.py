@@ -52,6 +52,11 @@ class IBaseQueue(IContained):
 		Return all elements in this queue
 		"""
 	
+	def empty():
+		"""
+		Empty all items in this queue
+		"""
+
 	def remove(item):
 		"""
 		Removes item from queue or raises LookupError if not found.

@@ -5,6 +5,7 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from feedgenerator.django.utils.functional import empty
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -182,6 +183,7 @@ class RedisQueue(object):
 			self._redis.pipeline().hdel(self._hash, *keys[1]).execute()
 			return keys[1]
 		return ()
+	reset = empty
 
 	def putFailed(self, item):
 		self._failed.put(item)

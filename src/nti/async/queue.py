@@ -123,6 +123,7 @@ class Queue(Contained, Persistent):
 		if result:
 			self._reset()
 		return result
+	reset = empty
 
 	def putFailed(self, item):
 		if self._failed_jobs is None:
