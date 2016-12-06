@@ -73,6 +73,7 @@ class IBaseQueue(IContained):
 		"""
 		Stores a failed job for review
 		"""
+
 	def failed():
 		"""
 		Return all failed jobs in this queue
