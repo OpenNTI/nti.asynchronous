@@ -27,7 +27,7 @@ from nti.async.interfaces import IAsyncReactor
 from nti.async.interfaces import ReactorStarted
 from nti.async.interfaces import ReactorStopped
 
-from nti.property.property import CachedProperty
+from nti.property.property import CachedProperty 
 
 from nti.site.interfaces import ISiteTransactionRunner
 
@@ -38,6 +38,7 @@ from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 class AsyncReactor(object):
 
 	stop = False
+	site_names = ()
 	processor = None
 	current_job = None
 	poll_interval = None
@@ -115,15 +116,16 @@ class AsyncReactor(object):
 		return True
 	executeJob = execute_job
 	
+	def transaction_runner(self):
+		result = component.getUtility(ISiteTransactionRunner)
+		if self.site_names:
+			result = partial(result, site_names=self.site_names)
+		return result
+
 	def process_job(self):
 		result = True
-
-		transaction_runner = component.getUtility(ISiteTransactionRunner)
-		if self.site_names:
-			transaction_runner = partial(transaction_runner, site_names=self.site_names)
-
 		try:
-			if transaction_runner(self.execute_job, retries=2, sleep=1):
+			if self.transaction_runner()(self.execute_job, retries=2, sleep=1):
 				# Do not sleep if we have work to do, especially since
 				# we may be reading from multiple queues.
 				self.poll_interval = 0
@@ -211,12 +213,9 @@ class AsyncFailedReactor(AsyncReactor):
 		return count
 
 	def process_job(self):
-		transaction_runner = component.getUtility(ISiteTransactionRunner)
-		if self.site_names:
-			transaction_runner = partial(transaction_runner, site_names=self.site_names)
 		for queue in self.queues:
 			self.current_queue = queue
-			count = transaction_runner(self.execute_job, retries=2, sleep=1)
+			count = self.transaction_runner()(self.execute_job, retries=2, sleep=1)
 			logger.info('Finished processing queue [%s] [count=%s]', queue._name, count)
 
 	def run(self):
