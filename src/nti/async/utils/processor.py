@@ -149,6 +149,9 @@ class Processor(object):
 		self.extend_context(context)
 		return context
 
+	def conf_packages(self):
+		return (self.conf_package, 'nti.async')
+
 	def __call__(self, *args, **kwargs):
 		arg_parser = self.create_arg_parser()
 		args = arg_parser.parse_args()
@@ -159,7 +162,7 @@ class Processor(object):
 			raise IOError("Invalid dataserver environment root directory")
 
 		context = self.create_context(env_dir)
-		conf_packages = (self.conf_package, 'nti.async')
+		conf_packages = self.conf_packages()
 
 		run_with_dataserver(environment_dir=env_dir,
 							xmlconfig_packages=conf_packages,
