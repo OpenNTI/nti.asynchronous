@@ -106,7 +106,7 @@ class AsyncReactor(object):
         job.run()
         if job.has_failed():
             logger.error("[%s] Job %s failed", self.current_queue, job.id)
-            self.current_queue.putFailed(job)
+            self.current_queue.put_failed(job)
         logger.debug(
             "[%s] Job %s has been executed", self.current_queue, job.id)
         return True

@@ -127,12 +127,12 @@ class Queue(Contained, Persistent):
         return result
     reset = empty
 
-    def putFailed(self, item):
+    def put_failed(self, item):
         if self._failed_jobs is None:
             self._failed_jobs = BList()
         item = IJob(item)
         self._failed_jobs.append(item)
-    put_failed = putFailed
+    putFailed = put_failed
 
     def failed(self):
         return list(self._failed_jobs) if self._failed_jobs else ()
