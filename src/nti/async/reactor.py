@@ -103,8 +103,8 @@ class AsyncReactor(object):
 
     def perform_job(self, job):
         logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-        job()
-        if job.hasFailed:
+        job.run()
+        if job.has_failed():
             logger.error("[%s] Job %s failed", self.current_queue, job.id)
             self.current_queue.putFailed(job)
         logger.debug(
