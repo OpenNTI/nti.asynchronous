@@ -23,6 +23,7 @@ from nti.dataserver.tests.mock_dataserver import DSInjectorMixin
 
 import zope.testing.cleanup
 
+
 class SharedConfiguringTestLayer(ZopeComponentLayer,
                                  GCLayerMixin,
                                  ConfiguringLayerMixin,
@@ -49,8 +50,10 @@ class SharedConfiguringTestLayer(ZopeComponentLayer,
 
 import unittest
 
+
 class AsyncTestCase(unittest.TestCase):
     layer = SharedConfiguringTestLayer
+
 
 class AsyncApplicationTestLayer(ApplicationTestLayer):
 

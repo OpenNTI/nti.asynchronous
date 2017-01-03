@@ -8,10 +8,10 @@ __docformat__ = "restructuredtext en"
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
-from hamcrest import assert_that
 from hamcrest import none
 from hamcrest import not_none
 from hamcrest import has_length
+from hamcrest import assert_that
 
 import operator
 
@@ -23,82 +23,89 @@ from nti.async.reactor import AsyncReactor
 
 from nti.async.tests import AsyncTestCase
 
+
 def mock_work():
-	return 42
+    return 42
+
 
 class TestReactor(AsyncTestCase):
 
-	def setUp(self):
-		self.reactor = AsyncReactor()
-		self.reactor.queues = ()
+    def setUp(self):
+        self.reactor = AsyncReactor()
+        self.reactor.queues = ()
 
-	def test_empty(self):
-		q1 = Queue()
-		q2 = Queue()
-		q3 = Queue()
-		self.reactor.queues = [q1,q2,q3]
-		job = self.reactor._get_job()
-		assert_that( self.reactor.queues, has_length( 3 ))
-		assert_that( job, none() )
+    def test_empty(self):
+        q1 = Queue()
+        q2 = Queue()
+        q3 = Queue()
+        self.reactor.queues = [q1, q2, q3]
+        job = self.reactor._get_job()
+        assert_that(self.reactor.queues, has_length(3))
+        assert_that(job, none())
 
-	def test_basic(self):
-		q1 = Queue()
-		q2 = Queue()
-		q3 = Queue()
-		job1 = q3.put(create_job(operator.mul, (7, 6)))
-		job2 = q3.put(create_job(operator.mul, (14, 3)))
-		self.reactor.queues = [q1,q2,q3]
+    def test_basic(self):
+        q1 = Queue()
+        q2 = Queue()
+        q3 = Queue()
+        job1 = q3.put(create_job(operator.mul, (7, 6)))
+        job2 = q3.put(create_job(operator.mul, (14, 3)))
+        self.reactor.queues = [q1, q2, q3]
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job1 ))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job1))
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job2 ))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job2))
+        val = self.reactor.perform_job(job)
+        assert_that(val, is_(True))
+        assert_that(job.has_failed(), is_(False))
+        assert_that(job.is_running(), is_(False))
+        assert_that(job.has_completed(), is_(True))
+        
+        job = self.reactor._get_job()
+        assert_that(job, none())
 
-		job = self.reactor._get_job()
-		assert_that( job, none() )
+    def test_boundary(self):
+        q1 = Queue()
+        q2 = Queue()
+        q3 = Queue()
+        job1 = q3.put(create_job(operator.mul, (7, 6)))
+        job2 = q3.put(create_job(operator.mul, (14, 3)))
+        self.reactor.queues = [q1, q2, q3]
 
-	def test_boundary(self):
-		q1 = Queue()
-		q2 = Queue()
-		q3 = Queue()
-		job1 = q3.put(create_job(operator.mul, (7, 6)))
-		job2 = q3.put(create_job(operator.mul, (14, 3)))
-		self.reactor.queues = [q1,q2,q3]
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job1))
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job1 ))
+        # Job in first queue processed first
+        job3 = q1.put(create_job(operator.mul, (7, 6)))
+        job4 = q2.put(create_job(operator.mul, (14, 3)))
 
-		# Job in first queue processed first
-		job3 = q1.put(create_job(operator.mul, (7, 6)))
-		job4 = q2.put(create_job(operator.mul, (14, 3)))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job3))
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job3 ))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job4))
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job4 ))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job2))
 
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job2 ))
+        # Empty again
+        job = self.reactor._get_job()
+        assert_that(job, none())
 
-		# Empty again
-		job = self.reactor._get_job()
-		assert_that( job, none() )
+        # And again
+        job5 = q3.put(create_job(operator.mul, (7, 6)))
+        job6 = q1.put(create_job(operator.mul, (14, 3)))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job6))
 
-		# And again
-		job5 = q3.put(create_job(operator.mul, (7, 6)))
-		job6 = q1.put(create_job(operator.mul, (14, 3)))
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job6 ))
-
-		job = self.reactor._get_job()
-		assert_that( job, not_none() )
-		assert_that( job, is_( job5 ))
+        job = self.reactor._get_job()
+        assert_that(job, not_none())
+        assert_that(job, is_(job5))

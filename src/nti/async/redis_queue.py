@@ -90,7 +90,7 @@ class RedisQueue(object):
     def _hdel(self, job):
         self._redis.pipeline().hdel(self._hash, job.id).execute()
 
-    def removeAt(self, index, unpickle=True):
+    def remove_at(self, index, unpickle=True):
         length = len(self)
         if index < 0:
             index += length
@@ -124,6 +124,7 @@ class RedisQueue(object):
         result = self._unpickle(result) if unpickle else result
         self._hdel(result)  # unset
         return result
+    removeAt = remove_at
 
     def pull(self, index=0):
         data = None
@@ -134,7 +135,7 @@ class RedisQueue(object):
             data = self._redis.pipeline().rpop(self._name).execute()
             data = data[0] if data and data[0] else None
         else:
-            data = self.removeAt(index, result=False)
+            data = self.remove_at(index, result=False)
 
         if data is None:
             raise IndexError(index)
@@ -187,9 +188,9 @@ class RedisQueue(object):
         return ()
     reset = empty
 
-    def putFailed(self, item):
+    def put_failed(self, item):
         self._failed.put(item)
-    put_failed = putFailed
+    putFailed = put_failed
 
     def get_failed_queue(self):
         return self._failed

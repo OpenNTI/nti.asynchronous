@@ -30,136 +30,173 @@ ACTIVE = u'Active'
 #: Completed job code
 COMPLETED = u'Completed'
 
+
 class IError(interface.Interface):
-	message = interface.Attribute("""Error message""")
+    message = interface.Attribute("""Error message""")
+
 
 class IBaseQueue(IContained):
 
-	def put(item, *kwargs):
-		"""
-		Put an IJob adapted from item into the queue.  Returns IJob.
-		"""
+    def put(item, *kwargs):
+        """
+        Put an IJob adapted from item into the queue.  Returns IJob.
+        """
 
-	def pull(index=0):
-		"""
-		Remove and return a job, by default from the front of the queue.
+    def pull(index=0):
+        """
+        Remove and return a job, by default from the front of the queue.
 
-		Raise IndexError if index does not exist.
-		"""
-	
-	def all():
-		"""
-		Return all elements in this queue
-		"""
-	
-	def empty():
-		"""
-		Empty all items in this queue
-		"""
+        Raise IndexError if index does not exist.
+        """
 
-	def remove(item):
-		"""
-		Removes item from queue or raises LookupError if not found.
-		"""
+    def all():
+        """
+        Return all elements in this queue
+        """
 
-	def claim():
-		"""
-		Returns first due job that is available
-		removing it from the queue as appropriate; or None, if none are
-		available.
-		"""
+    def empty():
+        """
+        Empty all items in this queue
+        """
 
-	def putFailed(item):
-		"""
-		Stores a failed job for review
-		"""
+    def remove(item):
+        """
+        Removes item from queue or raises LookupError if not found.
+        """
 
-	def failed():
-		"""
-		Return all failed jobs in this queue
-		"""
-		
-	def keys():
-		"""
-		return all keys in this queue
-		"""
+    def claim():
+        """
+        Returns first due job that is available
+        removing it from the queue as appropriate; or None, if none are
+        available.
+        """
 
-	def __contains__(key):
-		"""
-		Check if the specified key is in this queue
-		"""
+    def put_failed(item):
+        """
+        Stores a failed job for review
+        """
+    putFailed = put_failed
+
+    def failed():
+        """
+        Return all failed jobs in this queue
+        """
+
+    def keys():
+        """
+        return all keys in this queue
+        """
+
+    def __contains__(key):
+        """
+        Check if the specified key is in this queue
+        """
+
 
 class IQueue(IBaseQueue, IAttributeAnnotatable):
-	pass
+    pass
+
 
 class IRedisQueue(IBaseQueue):
 
-	def put(item, use_transactions=True, tail=True):
-		pass
-	
-	def all(unpickle=True):
-		pass
-	
-	def failed(unpickle=True):
-		pass
+    def put(item, use_transactions=True, tail=True):
+        pass
+
+    def all(unpickle=True):
+        pass
+
+    def failed(unpickle=True):
+        pass
+
 
 class IJob(IAttributeAnnotatable, IContained):
 
-	id = interface.Attribute("""job identifier.""")
+    id = interface.Attribute("""job identifier.""")
 
-	error = interface.Attribute("""Any job execution error.""")
+    error = interface.Attribute("""Any job execution error.""")
 
-	result = interface.Attribute("""The result of the call. """)
+    result = interface.Attribute("""The result of the call. """)
 
-	callable = interface.Attribute(
-		"""The callable object that should be called with *IJob.args and
+    callable = interface.Attribute(
+            """The callable object that should be called with *IJob.args and
 		**IJob.kwargs when the IJob is called.  Mutable.""")
 
-	args = interface.Attribute(
-		"""a peristent list of the args that should be applied to self.call.
+    args = interface.Attribute(
+            """a peristent list of the args that should be applied to self.call.
 		May include persistent objects (though note that, if passing a method
 		is desired, it will typicall need to be wrapped in an IJob).""")
 
-	kwargs = interface.Attribute(
-		"""a persistent mapping of the kwargs that should be applied to
+    kwargs = interface.Attribute(
+            """a persistent mapping of the kwargs that should be applied to
 		self.call.  May include persistent objects (though note that, if
 		passing a method is desired, it will typicall need to be wrapped
 		in an IJob).""")
 
-	def __call__(*args, **kwargs):
-		"""
-		call the callable.  Any given args are effectively appended to
-		self.args for the call, and any kwargs effectively update self.kwargs
-		for the call.
-		"""
+    def __call__(*args, **kwargs):
+        """
+        call the callable.  Any given args are effectively appended to
+        self.args for the call, and any kwargs effectively update self.kwargs
+        for the call.
+        """
+    run = __call__
+    
+    def is_new():
+        """
+        Check if the job is new
+        """
+    isNew = is_new
+
+    def has_completed():
+        """
+        Check if the job has completed
+        """
+    isSuccess = is_success = has_completed
+
+    def is_running():
+        """
+        Check if the job is running
+        """
+    isRunning = is_running
+    
+    def has_failed():
+        """
+        check if job has failed
+        """
+    hasFailed = has_failed
 
 class IAsyncReactor(interface.Interface):
-	"""
-	marker interface for a reactor
-	"""
+    """
+    marker interface for a reactor
+    """
 
-	queue_names = interface.Attribute("""Queue names.""")
+    queue_names = interface.Attribute("""Queue names.""")
+
 
 class IReactorEvent(IObjectEvent):
-	pass
+    pass
+
 
 class IReactorStarted(IReactorEvent):
-	pass
+    pass
+
 
 class IReactorStopped(IReactorEvent):
-	pass
+    pass
+
 
 @interface.implementer(IReactorEvent)
 class ReactorEvent(ObjectEvent):
 
-	@property
-	def reactor(self):
-		return self.object
+    @property
+    def reactor(self):
+        return self.object
+
 
 @interface.implementer(IReactorStarted)
 class ReactorStarted(ReactorEvent):
-	pass
+    pass
+
 
 @interface.implementer(IReactorStopped)
 class ReactorStopped(ReactorEvent):
-	pass
+    pass
