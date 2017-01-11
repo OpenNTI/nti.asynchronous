@@ -142,8 +142,7 @@ class AsyncReactor(object):
             logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
                          self.current_queue, e)
         except:
-            logger.exception(
-                'Cannot execute job. Queue=[%s]', self.current_queue)
+            logger.exception('Cannot execute job.')
             result = not self.exitOnError
         return result
     processJob = process_job
@@ -201,7 +200,7 @@ class AsyncFailedReactor(AsyncReactor):
                 # Stop when we reach the start
                 break
 
-    def execute_job(self):
+    def execute_job(self, job=None):
         count = 0
         # We do all jobs for a queue inside a single (hopefully manageable)
         # transaction.
@@ -209,13 +208,13 @@ class AsyncFailedReactor(AsyncReactor):
             logger.debug("[%s] Executing job (%s)", self.current_queue, job)
             job.run()
             if job.has_failed():
-                logger.error(
-                    "[%s] Job (%s) failed", self.current_queue, job.id)
+                logger.error("[%s] Job (%s) failed",
+                             self.current_queue, job.id)
                 self.current_queue.putFailed(job)
             else:
                 count += 1
-            logger.debug(
-                "[%s] Job (%s) has been executed", self.current_queue, job.id)
+            logger.debug("[%s] Job (%s) has been executed",
+                          self.current_queue, job.id)
 
         return count
 
