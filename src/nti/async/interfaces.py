@@ -170,7 +170,31 @@ class IAsyncReactor(interface.Interface):
     """
 
     queue_names = interface.Attribute("""Queue names.""")
+    
+    def stop():
+        """
+        Stop the processor
+        """
 
+    def pause():
+        """
+        Pause this processor
+        """
+
+    def resume():
+        """
+        Resume this processor
+        """
+
+    def is_running():
+        """
+        Return if this processor is running
+        """
+    
+    def is_paused():
+        """
+        Return if this processor has been paused
+        """
 
 class IReactorEvent(IObjectEvent):
     pass

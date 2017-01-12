@@ -38,7 +38,9 @@ from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 @interface.implementer(IAsyncReactor)
 class AsyncReactor(object):
 
-    stop = False
+    _stop = None
+    _paused = False
+
     site_names = ()
     processor = None
     current_job = None
@@ -78,16 +80,19 @@ class AsyncReactor(object):
                 pass
     removeQueues = remove_queues
 
-    def halt(self):
-        self.stop = True
+    def stop(self):
+        self._stop = True
+        notify(ReactorStopped(self))
+    halt = stop
 
     def is_running(self):
-        return not self.stop and self.processor != None
+        return self._stop is not None and not self._stop
     isRunning = is_running
 
     def start(self):
-        if self.processor is None:
-            self.processor = self._spawn_job_processor()
+        self._stop = False
+        self.generator.seed()
+        notify(ReactorStarted(self))
 
     def _get_job(self):
         # These are basically priority queues.
@@ -148,29 +153,31 @@ class AsyncReactor(object):
     processJob = process_job
 
     def run(self, sleep=gevent.sleep):
-        notify(ReactorStarted(self))
-        self.generator.seed()
-        self.stop = False
+        self.start()
         try:
             logger.info('Starting reactor for queues=(%s)', self.queue_names)
-            while not self.stop:
+            while self.is_running():
                 try:
                     sleep(self.poll_interval)
-                    if not self.stop and not self.process_job():
-                        self.stop = True
+                    if self.is_running():
+                        if not self.is_paused() and not self.process_job():
+                            break
                 except KeyboardInterrupt:
                     break
         finally:
-            notify(ReactorStopped(self))
+            self.stop()
             logger.warn('Exiting reactor. Queues=(%s)', self.queue_names)
-            self.processor = None
 
     __call__ = run
 
-    def _spawn_job_processor(self):
-        result = gevent.spawn(self.run)
-        return result
-
+    def pause(self):
+        self._paused = True
+    
+    def resume(self):
+        self._paused = False
+        
+    def is_paused(self):
+        return self._paused
 
 class AsyncFailedReactor(AsyncReactor):
     """
