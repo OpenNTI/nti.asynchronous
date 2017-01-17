@@ -35,37 +35,63 @@ from nti.site.interfaces import ISiteTransactionRunner
 from nti.zodb.interfaces import UnableToAcquireCommitLock
 from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
+
 @interface.implementer(IAsyncReactor)
-class ReactorMixin(object):
-    
+class RunnerMixin(object):
+
     trx_sleep = 1
     trx_retries = 2
     site_names = ()
-        
+
     def __init__(self, site_names=()):
         self.site_names = site_names or ()
-          
+
     def perform_job(self, job):
         logger.debug("[%s] Executing job (%s)", self.current_queue, job)
         job.run()
         if job.has_failed():
             logger.error("[%s] Job %s failed", self.current_queue, job.id)
             self.current_queue.put_failed(job)
-        logger.debug("[%s] Job %s has been executed", 
+        logger.debug("[%s] Job %s has been executed",
                      self.current_queue, job.id)
         return True
-    
+
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
         if self.site_names:
             result = partial(result, site_names=self.site_names)
         return result
 
+
 @interface.implementer(IAsyncReactor)
-class AsyncReactor(ReactorMixin):
+class ReactorMixin(object):
 
     _stop = None
     _paused = False
+
+    def start(self):
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+    halt = stop
+
+    def is_running(self):
+        return self._stop is not None and not self._stop
+    isRunning = is_running
+
+    def pause(self):
+        self._paused = True
+
+    def resume(self):
+        self._paused = False
+
+    def is_paused(self):
+        return self._paused
+
+
+@interface.implementer(IAsyncReactor)
+class AsyncReactor(RunnerMixin, ReactorMixin):
 
     processor = None
     current_job = None
@@ -74,7 +100,7 @@ class AsyncReactor(ReactorMixin):
 
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
                  queue_interface=IQueue, site_names=()):
-        super(AsyncReactor, self).__init__(site_names)
+        RunnerMixin.__init__(self, site_names)
         self.exitOnError = exitOnError
         self.generator = random.Random()
         self.poll_interval = poll_interval
@@ -105,19 +131,15 @@ class AsyncReactor(ReactorMixin):
                 pass
     removeQueues = remove_queues
 
-    def stop(self):
-        self._stop = True
-        notify(ReactorStopped(self))
-    halt = stop
-
-    def is_running(self):
-        return self._stop is not None and not self._stop
-    isRunning = is_running
-
     def start(self):
-        self._stop = False
+        super(AsyncReactor, self).start()
         self.generator.seed()
         notify(ReactorStarted(self))
+
+    def stop(self):
+        super(AsyncReactor, self).stop()
+        notify(ReactorStopped(self))
+    halt = stop
 
     def _get_job(self):
         # These are basically priority queues.
@@ -141,7 +163,7 @@ class AsyncReactor(ReactorMixin):
     def process_job(self):
         result = True
         try:
-            if self.transaction_runner()(self.execute_job, 
+            if self.transaction_runner()(self.execute_job,
                                          sleep=self.trx_sleep,
                                          retries=self.trx_retries):
                 # Do not sleep if we have work to do, especially since
@@ -154,8 +176,8 @@ class AsyncReactor(ReactorMixin):
             logger.error('Error while processing job. Queue=[%s], error=%s',
                          self.current_queue, e)
             result = False
-        except (ConflictError, 
-                UnableToAcquireCommitLock, 
+        except (ConflictError,
+                UnableToAcquireCommitLock,
                 ZODBUnableToAcquireCommitLock) as e:
             logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
                          self.current_queue, e)
@@ -183,14 +205,6 @@ class AsyncReactor(ReactorMixin):
 
     __call__ = run
 
-    def pause(self):
-        self._paused = True
-    
-    def resume(self):
-        self._paused = False
-        
-    def is_paused(self):
-        return self._paused
 
 class AsyncFailedReactor(AsyncReactor):
     """
@@ -226,27 +240,27 @@ class AsyncFailedReactor(AsyncReactor):
         # transaction.
         for job in self:
             logger.debug("[%s] Executing job (%s)",
-                          self.current_queue, job)
+                         self.current_queue, job)
             job.run()
             if job.has_failed():
                 logger.error("[%s] Job (%s) failed",
-                             self.current_queue, 
+                             self.current_queue,
                              job.id)
                 self.current_queue.putFailed(job)
             else:
                 count += 1
             logger.debug("[%s] Job (%s) has been executed",
-                          self.current_queue, job.id)
+                         self.current_queue, job.id)
 
         return count
 
     def process_job(self):
         for queue in self.queues:
-            self.current_queue = queue # logging
+            self.current_queue = queue  # logging
             count = self.transaction_runner()(self.execute_job,
-                                              retries=2, 
+                                              retries=2,
                                               sleep=1)
-            logger.info('Finished processing queue [%s] [count=%s]', 
+            logger.info('Finished processing queue [%s] [count=%s]',
                         queue._name, count)
 
     def run(self):
@@ -257,16 +271,16 @@ class AsyncFailedReactor(AsyncReactor):
         finally:
             logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
             self.processor = None
-
     __call__ = run
 
-class ProcessReactor(ReactorMixin):
-    
+
+class SingleQueueReactor(RunnerMixin, ReactorMixin):
+
     def __init__(self, queue_name, queue_interface=IQueue, site_names=()):
-        super(ProcessReactor, self).__init__(site_names)
+        RunnerMixin.__init__(self, site_names)
         self.queue_name = queue_name
         self.queue_interface = queue_interface
-    
+
     @Lazy
     def queue(self):
         return component.getUtility(self.queue_interface, name=self.queue_name)
@@ -279,11 +293,17 @@ class ProcessReactor(ReactorMixin):
             return None
 
     def run(self):
-        while True:
-            job = self._get_job()
-            if job is None:
-                break
-            self.transaction_runner()(job, 
-                                      sleep=self.trx_sleep,
-                                      retries=self.trx_retries)
+        self.start()
+        try:
+            logger.info('Starting reactor queue=(%s)', self.queue_name)
+            while self.is_running():
+                job = self._get_job()
+                if job is None:
+                    break
+                self.transaction_runner()(job,
+                                          sleep=self.trx_sleep,
+                                          retries=self.trx_retries)
+        finally:
+            self.stop()
+            logger.warn('Exiting reactor. queue=(%s)', self.queue_name)
     __call__ = run
