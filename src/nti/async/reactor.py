@@ -27,6 +27,7 @@ from nti.async.interfaces import IAsyncReactor
 from nti.async.interfaces import ReactorStarted
 from nti.async.interfaces import ReactorStopped
 
+from nti.property.property import Lazy
 from nti.property.property import CachedProperty
 
 from nti.site.interfaces import ISiteTransactionRunner
@@ -34,14 +35,38 @@ from nti.site.interfaces import ISiteTransactionRunner
 from nti.zodb.interfaces import UnableToAcquireCommitLock
 from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
+@interface.implementer(IAsyncReactor)
+class ReactorMixin(object):
+    
+    trx_sleep = 1
+    trx_retries = 2
+    site_names = ()
+        
+    def __init__(self, site_names=()):
+        self.site_names = site_names or ()
+          
+    def perform_job(self, job):
+        logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+        job.run()
+        if job.has_failed():
+            logger.error("[%s] Job %s failed", self.current_queue, job.id)
+            self.current_queue.put_failed(job)
+        logger.debug("[%s] Job %s has been executed", 
+                     self.current_queue, job.id)
+        return True
+    
+    def transaction_runner(self):
+        result = component.getUtility(ISiteTransactionRunner)
+        if self.site_names:
+            result = partial(result, site_names=self.site_names)
+        return result
 
 @interface.implementer(IAsyncReactor)
-class AsyncReactor(object):
+class AsyncReactor(ReactorMixin):
 
     _stop = None
     _paused = False
 
-    site_names = ()
     processor = None
     current_job = None
     poll_interval = None
@@ -49,7 +74,7 @@ class AsyncReactor(object):
 
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
                  queue_interface=IQueue, site_names=()):
-        self.site_names = site_names
+        super(AsyncReactor, self).__init__(site_names)
         self.exitOnError = exitOnError
         self.generator = random.Random()
         self.poll_interval = poll_interval
@@ -106,16 +131,6 @@ class AsyncReactor(object):
                 break
         return job
 
-    def perform_job(self, job):
-        logger.debug("[%s] Executing job (%s)", self.current_queue, job)
-        job.run()
-        if job.has_failed():
-            logger.error("[%s] Job %s failed", self.current_queue, job.id)
-            self.current_queue.put_failed(job)
-        logger.debug("[%s] Job %s has been executed", 
-                     self.current_queue, job.id)
-        return True
-    
     def execute_job(self, job=None):
         job = self._get_job() if job is None else job
         if job is None:
@@ -123,16 +138,12 @@ class AsyncReactor(object):
         return self.perform_job(job)
     executeJob = execute_job
 
-    def transaction_runner(self):
-        result = component.getUtility(ISiteTransactionRunner)
-        if self.site_names:
-            result = partial(result, site_names=self.site_names)
-        return result
-
     def process_job(self):
         result = True
         try:
-            if self.transaction_runner()(self.execute_job, retries=2, sleep=1):
+            if self.transaction_runner()(self.execute_job, 
+                                         sleep=self.trx_sleep,
+                                         retries=self.trx_retries):
                 # Do not sleep if we have work to do, especially since
                 # we may be reading from multiple queues.
                 self.poll_interval = 0
@@ -231,7 +242,7 @@ class AsyncFailedReactor(AsyncReactor):
 
     def process_job(self):
         for queue in self.queues:
-            self.current_queue = queue
+            self.current_queue = queue # logging
             count = self.transaction_runner()(self.execute_job,
                                               retries=2, 
                                               sleep=1)
@@ -247,4 +258,32 @@ class AsyncFailedReactor(AsyncReactor):
             logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
             self.processor = None
 
+    __call__ = run
+
+class ProcessReactor(ReactorMixin):
+    
+    def __init__(self, queue_name, queue_interface=IQueue, site_names=()):
+        super(ProcessReactor, self).__init__(site_names)
+        self.queue_name = queue_name
+        self.queue_interface = queue_interface
+    
+    @Lazy
+    def queue(self):
+        return component.getUtility(self.queue_interface, name=self.queue_name)
+    current_queue = queue
+
+    def _get_job(self):
+        try:
+            return self.queue.claim()
+        except KeyboardInterrupt:
+            return None
+
+    def run(self):
+        while True:
+            job = self._get_job()
+            if job is None:
+                break
+            self.transaction_runner()(job, 
+                                      sleep=self.trx_sleep,
+                                      retries=self.trx_retries)
     __call__ = run
