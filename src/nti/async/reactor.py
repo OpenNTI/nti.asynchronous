@@ -9,8 +9,10 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import time
 import gevent
 import random
+from threading import Thread
 from functools import partial
 
 from zope import component
@@ -36,7 +38,6 @@ from nti.zodb.interfaces import UnableToAcquireCommitLock
 from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
 
-@interface.implementer(IAsyncReactor)
 class RunnerMixin(object):
 
     trx_sleep = 1
@@ -63,7 +64,6 @@ class RunnerMixin(object):
         return result
 
 
-@interface.implementer(IAsyncReactor)
 class ReactorMixin(object):
 
     _stop = None
@@ -90,22 +90,11 @@ class ReactorMixin(object):
         return self._paused
 
 
-@interface.implementer(IAsyncReactor)
-class AsyncReactor(RunnerMixin, ReactorMixin):
+class QueuesMixin(object):
 
-    processor = None
-    current_job = None
-    poll_interval = None
-    current_queue = None
-
-    def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
-                 queue_interface=IQueue, site_names=()):
-        RunnerMixin.__init__(self, site_names)
-        self.exitOnError = exitOnError
-        self.generator = random.Random()
-        self.poll_interval = poll_interval
+    def __init__(self, queue_names=(), queue_interface=IQueue):
         self.queue_interface = queue_interface
-        self.queue_names = list(queue_names or ())
+        self.queue_names = list(set(queue_names or ()))
 
     @CachedProperty('queue_names')
     def queues(self):
@@ -116,8 +105,8 @@ class AsyncReactor(RunnerMixin, ReactorMixin):
     def add_queues(self, *queues):
         registered = []
         for x in queues:
-            if 		x not in self.queue_names \
-                and component.queryUtility(self.queue_interface, name=x) != None:
+            if      x not in self.queue_names \
+                    and component.queryUtility(self.queue_interface, name=x) != None:
                 registered.append(x)
         self.queue_names.extend(registered)
         return registered
@@ -130,6 +119,23 @@ class AsyncReactor(RunnerMixin, ReactorMixin):
             except ValueError:
                 pass
     removeQueues = remove_queues
+
+
+@interface.implementer(IAsyncReactor)
+class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
+
+    processor = None
+    current_job = None
+    poll_interval = None
+    current_queue = None
+
+    def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
+                 queue_interface=IQueue, site_names=()):
+        RunnerMixin.__init__(self, site_names)
+        QueuesMixin.__init__(self, queue_names, queue_interface)
+        self.exitOnError = exitOnError
+        self.generator = random.Random()
+        self.poll_interval = poll_interval
 
     def start(self):
         super(AsyncReactor, self).start()
@@ -213,9 +219,8 @@ class AsyncFailedReactor(AsyncReactor):
     """
 
     def __init__(self, queue_names=(), queue_interface=IQueue, site_names=()):
-        self.site_names = site_names
-        self.queue_names = queue_names
-        self.queue_interface = queue_interface
+        RunnerMixin.__init__(self, site_names)
+        QueuesMixin.__init__(self, queue_names, queue_interface)
 
     @CachedProperty('queue_names')
     def queues(self):
@@ -276,9 +281,11 @@ class AsyncFailedReactor(AsyncReactor):
 
 class SingleQueueReactor(RunnerMixin, ReactorMixin):
 
-    def __init__(self, queue_name, queue_interface=IQueue, site_names=()):
+    def __init__(self, queue_name, queue_interface=IQueue,
+                 site_names=(), poll_interval=5):
         RunnerMixin.__init__(self, site_names)
         self.queue_name = queue_name
+        self.poll_interval = poll_interval
         self.queue_interface = queue_interface
 
     @Lazy
@@ -286,24 +293,81 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
         return component.getUtility(self.queue_interface, name=self.queue_name)
     current_queue = queue
 
-    def _get_job(self):
-        try:
-            return self.queue.claim()
-        except KeyboardInterrupt:
-            return None
-
-    def run(self):
+    def run(self, sleep=time.sleep):
         self.start()
         try:
             logger.info('Starting reactor queue=(%s)', self.queue_name)
             while self.is_running():
-                job = self._get_job()
-                if job is None:
+                try:
+                    job = self.queue.claim()
+                    if job is None:
+                        sleep(self.poll_interval)
+                    else:
+                        try:
+                            self.transaction_runner()(job,
+                                                      sleep=self.trx_sleep,
+                                                      retries=self.trx_retries)
+                        except (ComponentLookupError,
+                                AttributeError,
+                                TypeError,
+                                StandardError) as e:
+                            logger.error('Error while processing job. Queue=[%s], error=%s',
+                                         self.queue, e)
+                        except (ConflictError,
+                                UnableToAcquireCommitLock,
+                                ZODBUnableToAcquireCommitLock) as e:
+                            logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
+                                         self.queue, e)
+                        except:
+                            logger.exception('Cannot execute job.')
+                except KeyboardInterrupt:
                     break
-                self.transaction_runner()(job,
-                                          sleep=self.trx_sleep,
-                                          retries=self.trx_retries)
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queue=(%s)', self.queue_name)
+            logger.info('Exiting reactor. queue=(%s)', self.queue_name)
+    __call__ = run
+
+
+@interface.implementer(IAsyncReactor)
+class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
+
+    def __init__(self, queue_names=(), queue_interface=IQueue,
+                 site_names=(), poll_interval=5):
+        RunnerMixin.__init__(self, site_names)
+        QueuesMixin.__init__(self, queue_names, queue_interface)
+        self.poll_interval = poll_interval
+
+    def start(self):
+        super(ThreadedReactor, self).start()
+        notify(ReactorStarted(self))
+
+    def stop(self):
+        super(ThreadedReactor, self).stop()
+        notify(ReactorStopped(self))
+    halt = stop
+
+    def run(self, sleep=time.sleep):
+        self.start()
+        threads = []
+        try:
+            logger.info('Starting reactor queues=(%s)', self.queue_names)
+            # create processes
+            for name in self.queue_names:
+                sqr = SingleQueueReactor(name,
+                                         self.queue_interface,
+                                         self.site_names,
+                                         self.poll_interval)
+                thread = Thread(target=sqr)
+                thread.daemon = True
+                thread.start()
+                threads.append(thread)
+            # wait till signal
+            while self.is_running():
+                try:
+                    sleep(0)
+                except KeyboardInterrupt:
+                    break
+        finally:
+            self.stop()
+            logger.warn('Exiting reactor. queue=(%s)', self.queue_names)
     __call__ = run

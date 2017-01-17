@@ -25,6 +25,7 @@ from nti.async.interfaces import IRedisQueue
 from nti.async.interfaces import IAsyncReactor
 
 from nti.async.reactor import AsyncReactor
+from nti.async.reactor import ThreadedReactor
 from nti.async.reactor import AsyncFailedReactor
 
 from nti.async.redis_queue import RedisQueue
@@ -60,16 +61,18 @@ class Processor(object):
         arg_parser.add_argument('-v', '--verbose', help="Be verbose",
                                 action='store_true', dest='verbose')
         arg_parser.add_argument('-l', '--library', help="Load library packages",
-                                                        action='store_true', dest='library')
+                                action='store_true', dest='library')
         arg_parser.add_argument('-n', '--name', help="Queue name",
                                 default=u'', dest='name')
-        arg_parser.add_argument('-o', '--queue_names', help="Queue names", default='',
-                                dest='queue_names')
+        arg_parser.add_argument('-o', '--queue_names', help="Queue names", 
+                                default='', dest='queue_names')
         arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
                                 default=True, dest='exit_error', action='store_false')
         arg_parser.add_argument('--site', dest='site', help="Application SITE")
         arg_parser.add_argument('--redis', help="Use redis queues",
                                 action='store_true', dest='redis')
+        arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
+                                action='store_true', dest='threaded')
         arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
                                 action='store_true', dest='failed_jobs')
         return arg_parser
@@ -84,12 +87,12 @@ class Processor(object):
             zope.exceptions.log.Formatter(ei))
 
     def setup_redis_queues(self, queue_names):
-        redis = component.getUtility(IRedisClient)
         all_queues = list(queue_names)
+        gsm = component.globalSiteManager
+        redis = component.getUtility(IRedisClient)
         for name in all_queues:
             queue = RedisQueue(redis, name)
-            component.globalSiteManager.registerUtility(
-                queue, IRedisQueue, name)
+            gsm.registerUtility(queue, IRedisQueue, name)
 
     def load_library(self):
         try:
@@ -122,9 +125,8 @@ class Processor(object):
         failed_jobs = getattr(args, 'failed_jobs', False)
 
         if getattr(args, 'library', False):
-            transaction_runner = component.getUtility(
-                IDataserverTransactionRunner)
-            transaction_runner(self.load_library)
+            runner = component.getUtility(IDataserverTransactionRunner)
+            runner(self.load_library)
             logger.info("Library loaded")
 
         site = getattr(args, 'site', None)
@@ -132,6 +134,7 @@ class Processor(object):
             logger.info("Using site %s", site)
         site_names = (site,) if site else ()
 
+        threaded = getattr(args, 'threaded', False)
         exit_on_error = getattr(args, 'exit_error', True)
 
         if failed_jobs:
@@ -140,11 +143,16 @@ class Processor(object):
                                         queue_interface=queue_interface)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
+        elif threaded:
+            target = AsyncReactor(site_names=site_names,
+                                  queue_names=queue_names,
+                                  queue_interface=queue_interface,
+                                  exitOnError=exit_on_error)
+            component.globalSiteManager.registerUtility(target, IAsyncReactor)
         else:
-            target = AsyncReactor(queue_names=queue_names,
-                                  exitOnError=exit_on_error,
-                                  site_names=site_names,
-                                  queue_interface=queue_interface)
+            target = ThreadedReactor(queue_names=queue_names,
+                                     site_names=site_names,
+                                     queue_interface=queue_interface)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target(time.sleep)
         sys.exit(result)
