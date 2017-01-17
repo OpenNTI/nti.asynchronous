@@ -66,7 +66,7 @@ class AsyncReactor(object):
         registered = []
         for x in queues:
             if 		x not in self.queue_names \
-                    and component.queryUtility(self.queue_interface, name=x) != None:
+                and component.queryUtility(self.queue_interface, name=x) != None:
                 registered.append(x)
         self.queue_names.extend(registered)
         return registered
@@ -112,8 +112,8 @@ class AsyncReactor(object):
         if job.has_failed():
             logger.error("[%s] Job %s failed", self.current_queue, job.id)
             self.current_queue.put_failed(job)
-        logger.debug(
-            "[%s] Job %s has been executed", self.current_queue, job.id)
+        logger.debug("[%s] Job %s has been executed", 
+                     self.current_queue, job.id)
         return True
     
     def execute_job(self, job=None):
@@ -143,7 +143,9 @@ class AsyncReactor(object):
             logger.error('Error while processing job. Queue=[%s], error=%s',
                          self.current_queue, e)
             result = False
-        except (ConflictError, UnableToAcquireCommitLock, ZODBUnableToAcquireCommitLock) as e:
+        except (ConflictError, 
+                UnableToAcquireCommitLock, 
+                ZODBUnableToAcquireCommitLock) as e:
             logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
                          self.current_queue, e)
         except:
@@ -212,11 +214,13 @@ class AsyncFailedReactor(AsyncReactor):
         # We do all jobs for a queue inside a single (hopefully manageable)
         # transaction.
         for job in self:
-            logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+            logger.debug("[%s] Executing job (%s)",
+                          self.current_queue, job)
             job.run()
             if job.has_failed():
                 logger.error("[%s] Job (%s) failed",
-                             self.current_queue, job.id)
+                             self.current_queue, 
+                             job.id)
                 self.current_queue.putFailed(job)
             else:
                 count += 1
@@ -228,10 +232,11 @@ class AsyncFailedReactor(AsyncReactor):
     def process_job(self):
         for queue in self.queues:
             self.current_queue = queue
-            count = self.transaction_runner()(
-                self.execute_job, retries=2, sleep=1)
-            logger.info(
-                'Finished processing queue [%s] [count=%s]', queue._name, count)
+            count = self.transaction_runner()(self.execute_job,
+                                              retries=2, 
+                                              sleep=1)
+            logger.info('Finished processing queue [%s] [count=%s]', 
+                        queue._name, count)
 
     def run(self):
         try:
