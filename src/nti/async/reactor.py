@@ -295,34 +295,37 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
         return component.getUtility(self.queue_interface, name=self.queue_name)
     current_queue = queue
 
+    def execute_job(self):
+        job = self.queue.claim()
+        if job is not None:
+            return self.perform_job(job, self.queue)
+        return False
+
     def run(self, sleep=time.sleep):
         self.start()
         try:
             logger.info('Starting reactor queue=(%s)', self.queue_name)
             while self.is_running():
                 try:
-                    job = self.queue.claim()
-                    if job is None:
-                        sleep(self.poll_interval)
-                    else:
-                        try:
-                            executable = partial(self.perform_job, job)
-                            self.transaction_runner()(executable,
-                                                      sleep=self.trx_sleep,
-                                                      retries=self.trx_retries)
-                        except (ComponentLookupError,
-                                AttributeError,
-                                TypeError,
-                                StandardError) as e:
-                            logger.error('Error while processing job. Queue=[%s], error=%s',
-                                         self.queue, e)
-                        except (ConflictError,
-                                UnableToAcquireCommitLock,
-                                ZODBUnableToAcquireCommitLock) as e:
-                            logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
-                                         self.queue, e)
-                        except:
-                            logger.exception('Cannot execute job.')
+                    try:
+                        runner = self.transaction_runner()
+                        if not runner(self.execute_job,
+                                      sleep=self.trx_sleep,
+                                      retries=self.trx_retries):
+                            sleep(self.poll_interval)
+                    except (ComponentLookupError,
+                            AttributeError,
+                            TypeError,
+                            StandardError) as e:
+                        logger.error('Error while processing job. Queue=[%s], error=%s',
+                                     self.queue, e)
+                    except (ConflictError,
+                            UnableToAcquireCommitLock,
+                            ZODBUnableToAcquireCommitLock) as e:
+                        logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
+                                     self.queue, e)
+                    except:
+                        logger.exception('Cannot execute job.')
                 except KeyboardInterrupt:
                     break
         finally:
@@ -353,15 +356,15 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         self.start()
         threads = []
         try:
-            logger.info('Starting threaded reactor queues=(%s)', 
+            logger.info('Starting threaded reactor queues=(%s)',
                         self.queue_names)
             # create processes
             for name in self.queue_names:
-                sqr = SingleQueueReactor(name,
-                                         self.queue_interface,
-                                         self.site_names,
-                                         self.poll_interval)
-                thread = Thread(target=sqr)
+                target = SingleQueueReactor(name,
+                                            self.queue_interface,
+                                            self.site_names,
+                                            self.poll_interval)
+                thread = Thread(target=target)
                 thread.daemon = True
                 thread.start()
                 threads.append(thread)
