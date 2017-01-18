@@ -11,6 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 import time
 import random
+import logging
 from threading import Thread
 from functools import partial
 
@@ -384,3 +385,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
             self.stop()
             logger.warn('Exiting reactor. queue=(%s)', self.queue_names)
     __call__ = run
+
+# Reduce verbosity of activity logger
+activity_logger = __import__('logging').getLogger("nti.zodb.activitylog")
+activity_logger.setLevel(logging.ERROR)
