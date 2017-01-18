@@ -48,6 +48,7 @@ class RunnerMixin(object):
 
     def __init__(self, site_names=()):
         self.site_names = site_names or ()
+        self.generator = random.Random()
 
     def perform_job(self, job, queue=None):
         queue = queue or self.current_queue
@@ -136,7 +137,6 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         RunnerMixin.__init__(self, site_names)
         QueuesMixin.__init__(self, queue_names, queue_interface)
         self.exitOnError = exitOnError
-        self.generator = random.Random()
         self.poll_interval = poll_interval
 
     def start(self):
@@ -304,6 +304,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
     def run(self, sleep=time.sleep):
         self.start()
         try:
+            sleep_time = self.poll_interval
             logger.info('Starting reactor queue=(%s)', self.queue_name)
             while self.is_running():
                 try:
@@ -312,7 +313,12 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                         if not runner(self.execute_job,
                                       sleep=self.trx_sleep,
                                       retries=self.trx_retries):
-                            sleep(self.poll_interval)
+                            # sleep some random time
+                            sleep_time += self.generator.uniform(1, 5)
+                            sleep_time = min(sleep_time, 60)
+                            sleep(sleep_time)
+                        else:
+                            sleep_time = self.poll_interval
                     except (ComponentLookupError,
                             AttributeError,
                             TypeError,
@@ -371,7 +377,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
             # wait till signal
             while self.is_running():
                 try:
-                    sleep(0)
+                    sleep(self.poll_interval)
                 except KeyboardInterrupt:
                     break
         finally:
