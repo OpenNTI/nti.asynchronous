@@ -304,7 +304,8 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                         sleep(self.poll_interval)
                     else:
                         try:
-                            self.transaction_runner()(job,
+                            executable = partial(self.perform_job, job)
+                            self.transaction_runner()(executable,
                                                       sleep=self.trx_sleep,
                                                       retries=self.trx_retries)
                         except (ComponentLookupError,
