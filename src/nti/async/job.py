@@ -103,8 +103,7 @@ class Job(Contained):
     def _get_callable(self):
         if self._callable_name is None:
             return self._callable_root
-        else:
-            return getattr(self._callable_root, self._callable_name)
+        return getattr(self._callable_root, self._callable_name)
 
     def _set_callable(self, value):
         if isinstance(value, types.MethodType):
@@ -117,8 +116,8 @@ class Job(Contained):
         else:
             self._callable_root, self._callable_name = value, None
 
-        if (	IJob.providedBy(self._callable_root)
-                and self._callable_root.__parent__ is None):
+        if (    IJob.providedBy(self._callable_root)
+            and self._callable_root.__parent__ is None):
             self._callable_root.__parent__ = self
 
     callable = property(_get_callable, _set_callable)
@@ -129,9 +128,10 @@ class Job(Contained):
         effective_args[0:0] = self.args
         effective_kwargs = dict(self.kwargs)
         effective_kwargs.update(kwargs)
-        __traceback_info__ = self._callable_root, \
-            self._callable_name, \
-            effective_args, effective_kwargs
+        __traceback_info__ = (self._callable_root, 
+                              self._callable_name, 
+                              effective_args, 
+                              effective_kwargs)
         try:
             self._status_id = ACTIVE_ID
             result = self.callable(*effective_args, **effective_kwargs)
@@ -140,8 +140,8 @@ class Job(Contained):
             return result
         except Exception as e:
             self._status_id = FAILED_ID
-            self._error =   self.error_adapter(sys.exc_info(), None) \
-                or self.error_adapter(e, None)
+            self._error =  self.error_adapter(sys.exc_info(), None) \
+                        or self.error_adapter(e, None)
             logger.exception("Job (%s) execution failed", self)
         finally:
             self._active_end = datetime.datetime.utcnow()
