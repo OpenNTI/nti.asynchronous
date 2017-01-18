@@ -143,7 +143,7 @@ class Processor(object):
                                         queue_interface=queue_interface)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
-        elif threaded:
+        elif not threaded:
             target = AsyncReactor(site_names=site_names,
                                   queue_names=queue_names,
                                   queue_interface=queue_interface,
