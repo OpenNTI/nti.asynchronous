@@ -377,7 +377,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
             # wait till signal
             while self.is_running():
                 try:
-                    sleep(self.poll_interval)
+                    sleep(0.2)
                 except KeyboardInterrupt:
                     break
         finally:
