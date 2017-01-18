@@ -10,10 +10,11 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import time
-import gevent
 import random
 from threading import Thread
 from functools import partial
+
+import gevent
 
 from zope import component
 from zope import interface
@@ -43,18 +44,20 @@ class RunnerMixin(object):
     trx_sleep = 1
     trx_retries = 2
     site_names = ()
+    current_queue = None
 
     def __init__(self, site_names=()):
         self.site_names = site_names or ()
 
-    def perform_job(self, job):
-        logger.debug("[%s] Executing job (%s)", self.current_queue, job)
+    def perform_job(self, job, queue=None):
+        queue = queue or self.current_queue
+        logger.debug("[%s] Executing job (%s)", queue, job)
         job.run()
         if job.has_failed():
-            logger.error("[%s] Job %s failed", self.current_queue, job.id)
-            self.current_queue.put_failed(job)
+            logger.error("[%s] Job %s failed", queue, job.id)
+            queue.put_failed(job)
         logger.debug("[%s] Job %s has been executed",
-                     self.current_queue, job.id)
+                     queue, job.id)
         return True
 
     def transaction_runner(self):
@@ -127,7 +130,6 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     processor = None
     current_job = None
     poll_interval = None
-    current_queue = None
 
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
                  queue_interface=IQueue, site_names=()):
@@ -261,7 +263,7 @@ class AsyncFailedReactor(AsyncReactor):
 
     def process_job(self):
         for queue in self.queues:
-            self.current_queue = queue  # logging
+            self.current_queue = queue  # set proper queue
             count = self.transaction_runner()(self.execute_job,
                                               retries=2,
                                               sleep=1)
@@ -351,7 +353,8 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         self.start()
         threads = []
         try:
-            logger.info('Starting reactor queues=(%s)', self.queue_names)
+            logger.info('Starting threaded reactor queues=(%s)', 
+                        self.queue_names)
             # create processes
             for name in self.queue_names:
                 sqr = SingleQueueReactor(name,
