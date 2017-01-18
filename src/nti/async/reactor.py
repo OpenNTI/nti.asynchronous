@@ -370,7 +370,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                                             self.queue_interface,
                                             self.site_names,
                                             self.poll_interval)
-                thread = Thread(target=target)
+                thread = Thread(target=target, name=name)
                 thread.daemon = True
                 thread.start()
                 threads.append(thread)
