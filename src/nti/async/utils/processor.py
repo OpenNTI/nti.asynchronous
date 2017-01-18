@@ -149,6 +149,7 @@ class Processor(object):
                                   queue_interface=queue_interface,
                                   exitOnError=exit_on_error)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
+            result = target()
         else:
             target = ThreadedReactor(queue_names=queue_names,
                                      site_names=site_names,
