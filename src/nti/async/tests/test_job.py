@@ -103,8 +103,8 @@ class TestJob(AsyncTestCase):
         except:
             error = IError(sys.exc_info())
         assert_that(error, is_not(none()))
-        assert_that(
-            error, has_property('message', has_length(greater_than(1))))
+        assert_that(error, 
+                    has_property('message', has_length(greater_than(1))))
 
     def test_pickle(self):
         job = Job(multiply, 5, 3)
