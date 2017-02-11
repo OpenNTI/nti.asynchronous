@@ -11,7 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import interface
 
-from zope.container.contained import Contained
+from zope.location.interfaces import IContained
 
 from zc.blist import BList
 
@@ -25,9 +25,12 @@ from nti.async.interfaces import IJob
 from nti.async.interfaces import IQueue
 
 
-@interface.implementer(IQueue)
-class Queue(Contained, Persistent):
+@interface.implementer(IQueue, IContained)
+class Queue(Persistent):
 
+    __name__ = None
+    __parent__ = None
+    
     family = BTrees.family64
 
     _queue = _length = _failed_jobs = None

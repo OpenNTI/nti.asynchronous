@@ -17,7 +17,7 @@ from collections import Mapping
 
 from zope import interface
 
-from zope.container.contained import Contained
+from zope.location.interfaces import IContained
 
 from nti.async.interfaces import NEW
 from nti.async.interfaces import ACTIVE
@@ -48,7 +48,10 @@ _status_mapping = {
 
 @WithRepr
 @interface.implementer(IJob)
-class Job(Contained):
+class Job(object):
+
+    __name__ = None
+    __parent__ = None
 
     _id = None
     _error = _active_start = _active_end = None
@@ -171,9 +174,12 @@ def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
 
 @WithRepr
 @EqHash('message')
-@interface.implementer(IError)
-class Error(Contained):
+@interface.implementer(IError, IContained)
+class Error(object):
 
+    __name__ = None
+    __parent__ = None
+    
     def __init__(self, message=u''):
         self.message = message
 
