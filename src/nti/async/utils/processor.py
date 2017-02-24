@@ -16,7 +16,7 @@ import signal
 import logging
 import argparse
 
-import zope.exceptions
+from zope.exceptions.log import Formatter as zope_formatter
 
 from zope import component
 
@@ -35,6 +35,8 @@ from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.dataserver.utils import run_with_dataserver
 from nti.dataserver.utils.base_script import create_context
+
+DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
 
 # signal handlers
 
@@ -64,7 +66,7 @@ class Processor(object):
                                 action='store_true', dest='library')
         arg_parser.add_argument('-n', '--name', help="Queue name",
                                 default=u'', dest='name')
-        arg_parser.add_argument('-o', '--queue_names', help="Queue names", 
+        arg_parser.add_argument('-o', '--queue_names', help="Queue names",
                                 default='', dest='queue_names')
         arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
                                 default=True, dest='exit_error', action='store_false')
@@ -82,9 +84,8 @@ class Processor(object):
         return self.add_arg_parser_arguments(arg_parser)
 
     def set_log_formatter(self, args):
-        ei = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
-        logging.root.handlers[0].setFormatter(
-            zope.exceptions.log.Formatter(ei))
+        ei = DEFAULT_LOG_FORMAT
+        logging.root.handlers[0].setFormatter(zope_formatter(ei))
 
     def setup_redis_queues(self, queue_names):
         all_queues = list(queue_names)
@@ -175,7 +176,9 @@ class Processor(object):
 
         env_dir = os.getenv('DATASERVER_DIR')
         env_dir = os.path.expanduser(env_dir) if env_dir else env_dir
-        if not env_dir or not os.path.exists(env_dir) and not os.path.isdir(env_dir):
+        if     not env_dir \
+            or not os.path.exists(env_dir) \
+            and not os.path.isdir(env_dir):
             raise IOError("Invalid dataserver environment root directory")
 
         context = self.create_context(env_dir)
