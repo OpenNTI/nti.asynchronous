@@ -284,8 +284,11 @@ class AsyncFailedReactor(AsyncReactor):
 
 class SingleQueueReactor(RunnerMixin, ReactorMixin):
 
+    max_sleep_time = 60
+    max_range_uniform = 5
+
     def __init__(self, queue_name, queue_interface=IQueue,
-                 site_names=(), poll_interval=5):
+                 site_names=(), poll_interval=3):
         RunnerMixin.__init__(self, site_names)
         self.queue_name = queue_name
         self.poll_interval = poll_interval
@@ -302,6 +305,10 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
             return self.perform_job(job, self.queue)
         return False
 
+    @property
+    def uniform(self):
+        return self.generator.uniform(1, self.max_range_uniform)
+
     def run(self, sleep=time.sleep):
         self.start()
         try:
@@ -315,8 +322,9 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                                       sleep=self.trx_sleep,
                                       retries=self.trx_retries):
                             # sleep some random time
-                            sleep_time += self.generator.uniform(1, 5)
-                            sleep_time = min(sleep_time, 60)
+                            sleep_time += self.uniform()
+                            sleep_time = min(sleep_time,
+                                             self.max_sleep_times)
                             sleep(sleep_time)
                         else:
                             sleep_time = self.poll_interval
@@ -345,7 +353,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
 class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
 
     def __init__(self, queue_names=(), queue_interface=IQueue,
-                 site_names=(), poll_interval=5):
+                 site_names=(), poll_interval=3):
         RunnerMixin.__init__(self, site_names)
         QueuesMixin.__init__(self, queue_names, queue_interface)
         self.poll_interval = poll_interval
