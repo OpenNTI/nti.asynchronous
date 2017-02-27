@@ -272,11 +272,13 @@ class AsyncFailedReactor(AsyncReactor):
                         queue._name, count)
 
     def run(self):
+        self.start()
         try:
             logger.info('Starting reactor for failed jobs in queues=(%s)',
                         self.queue_names)
             self.process_job()
         finally:
+            self.stop()
             logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
             self.processor = None
     __call__ = run
