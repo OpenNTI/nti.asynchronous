@@ -39,6 +39,9 @@ from nti.site.interfaces import ISiteTransactionRunner
 from nti.zodb.interfaces import UnableToAcquireCommitLock
 from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
+DEFAULT_MAX_UNIFORM = 5
+DEFAULT_MAX_SLEEP_TIME = 60
+
 
 class RunnerMixin(object):
 
@@ -46,14 +49,21 @@ class RunnerMixin(object):
     trx_retries = 2
     site_names = ()
 
-    max_sleep_time = 60
-    max_range_uniform = 5
-
     current_queue = None
 
-    def __init__(self, site_names=()):
+    def __init__(self, site_names=(),
+                 max_range_uniform=None,
+                 max_sleep_time=None):
         self.site_names = site_names or ()
         self.generator = random.Random()
+        if max_range_uniform is None:
+            max_range_uniform = DEFAULT_MAX_UNIFORM
+        self.max_range_uniform = max_range_uniform
+        if max_sleep_time is None:
+            max_sleep_time = DEFAULT_MAX_SLEEP_TIME
+        self.max_sleep_time = max_sleep_time
+        assert self.max_sleep_time > 0
+        assert self.max_range_uniform > 0
 
     def uniform(self):
         return self.generator.uniform(1, self.max_range_uniform)
@@ -139,10 +149,10 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     processor = None
     current_job = None
     poll_interval = None
-    
+
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
-                 queue_interface=IQueue, site_names=()):
-        RunnerMixin.__init__(self, site_names)
+                 queue_interface=IQueue, site_names=(), **kwargs):
+        RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
         self.exitOnError = exitOnError
         self.poll_interval = poll_interval
@@ -229,8 +239,9 @@ class AsyncFailedReactor(AsyncReactor):
     each job once and then return.
     """
 
-    def __init__(self, queue_names=(), queue_interface=IQueue, site_names=()):
-        RunnerMixin.__init__(self, site_names)
+    def __init__(self, queue_names=(), queue_interface=IQueue,
+                 site_names=(), **kwargs):
+        RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
 
     @CachedProperty('queue_names')
@@ -295,8 +306,8 @@ class AsyncFailedReactor(AsyncReactor):
 class SingleQueueReactor(RunnerMixin, ReactorMixin):
 
     def __init__(self, queue_name, queue_interface=IQueue,
-                 site_names=(), poll_interval=3):
-        RunnerMixin.__init__(self, site_names)
+                 site_names=(), poll_interval=3, **kwargs):
+        RunnerMixin.__init__(self, site_names, **kwargs)
         self.queue_name = queue_name
         self.poll_interval = poll_interval
         self.queue_interface = queue_interface
@@ -327,7 +338,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                             # sleep some random time
                             sleep_time += self.uniform()
                             sleep_time = min(sleep_time,
-                                             self.max_sleep_times)
+                                             self.max_sleep_time)
                             sleep(sleep_time)
                         else:
                             sleep_time = self.poll_interval

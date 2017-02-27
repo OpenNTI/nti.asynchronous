@@ -24,6 +24,9 @@ from nti.async.interfaces import IQueue
 from nti.async.interfaces import IRedisQueue
 from nti.async.interfaces import IAsyncReactor
 
+from nti.async.reactor import DEFAULT_MAX_UNIFORM
+from nti.async.reactor import DEFAULT_MAX_SLEEP_TIME
+
 from nti.async.reactor import AsyncReactor
 from nti.async.reactor import ThreadedReactor
 from nti.async.reactor import AsyncFailedReactor
@@ -73,6 +76,10 @@ class Processor(object):
         arg_parser.add_argument('--site', dest='site', help="Application SITE")
         arg_parser.add_argument('--redis', help="Use redis queues",
                                 action='store_true', dest='redis')
+        arg_parser.add_argument('-r', '--max_range_uniform', help="Max sleep range tic when no jobs",
+                                default=DEFAULT_MAX_UNIFORM, dest='max_range_uniform', type=int)
+        arg_parser.add_argument('-s', '--max_sleep_time', help="Max sleep time when no jobs",
+                                default=DEFAULT_MAX_SLEEP_TIME, dest='max_sleep_time', type=int)
         arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
                                 action='store_true', dest='threaded')
         arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
@@ -138,23 +145,26 @@ class Processor(object):
         threaded = getattr(args, 'threaded', False)
         exit_on_error = getattr(args, 'exit_error', True)
 
+        max_sleep_time = getattr(args, 'max_sleep_time')
+        max_range_uniform = getattr(args, 'max_range_uniform')
+
+        kwargs = {'queue_names': queue_names,
+                  'site_names': site_names,
+                  'max_sleep_time': max_sleep_time,
+                  'max_range_uniform': max_range_uniform,
+                  'queue_interface': queue_interface}
+
         if failed_jobs:
-            target = AsyncFailedReactor(queue_names=queue_names,
-                                        site_names=site_names,
-                                        queue_interface=queue_interface)
+            target = AsyncFailedReactor(**kwargs)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
         elif not threaded:
-            target = AsyncReactor(site_names=site_names,
-                                  queue_names=queue_names,
-                                  queue_interface=queue_interface,
-                                  exitOnError=exit_on_error)
+            target = AsyncReactor(exitOnError=exit_on_error,
+                                  **kwargs)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
         else:
-            target = ThreadedReactor(queue_names=queue_names,
-                                     site_names=site_names,
-                                     queue_interface=queue_interface)
+            target = ThreadedReactor(**kwargs)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target(time.sleep)
         sys.exit(result)
