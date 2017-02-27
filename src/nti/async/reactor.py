@@ -50,18 +50,18 @@ class RunnerMixin(object):
     site_names = ()
 
     current_queue = None
-
+    max_sleep_time = DEFAULT_MAX_SLEEP_TIME
+    max_range_uniform = DEFAULT_MAX_UNIFORM
+    
     def __init__(self, site_names=(),
-                 max_range_uniform=None,
-                 max_sleep_time=None):
-        self.site_names = site_names or ()
+                 max_sleep_time=None,
+                 max_range_uniform=None):
         self.generator = random.Random()
-        if max_range_uniform is None:
-            max_range_uniform = DEFAULT_MAX_UNIFORM
-        self.max_range_uniform = max_range_uniform
-        if max_sleep_time is None:
-            max_sleep_time = DEFAULT_MAX_SLEEP_TIME
-        self.max_sleep_time = max_sleep_time
+        self.site_names = site_names or ()
+        if max_sleep_time is not None:
+            self.max_sleep_time = max_sleep_time
+        if max_range_uniform is not None:
+            self.max_range_uniform = max_range_uniform
         assert self.max_sleep_time > 0
         assert self.max_range_uniform > 0
 
@@ -367,8 +367,8 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
 class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
 
     def __init__(self, queue_names=(), queue_interface=IQueue,
-                 site_names=(), poll_interval=3):
-        RunnerMixin.__init__(self, site_names)
+                 site_names=(), poll_interval=3, **kwargs):
+        RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
         self.poll_interval = poll_interval
 
@@ -392,7 +392,9 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                 target = SingleQueueReactor(name,
                                             self.queue_interface,
                                             self.site_names,
-                                            self.poll_interval)
+                                            self.poll_interval,
+                                            max_sleep_time=self.max_sleep_time,
+                                            max_range_uniform=self.max_range_uniform)
                 target.__parent__ = self
                 thread = Thread(target=target, name=name)
                 thread.daemon = True
