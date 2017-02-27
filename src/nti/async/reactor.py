@@ -45,11 +45,18 @@ class RunnerMixin(object):
     trx_sleep = 1
     trx_retries = 2
     site_names = ()
+
+    max_sleep_time = 60
+    max_range_uniform = 5
+
     current_queue = None
 
     def __init__(self, site_names=()):
         self.site_names = site_names or ()
         self.generator = random.Random()
+
+    def uniform(self):
+        return self.generator.uniform(1, self.max_range_uniform)
 
     def perform_job(self, job, queue=None):
         queue = queue or self.current_queue
@@ -111,7 +118,7 @@ class QueuesMixin(object):
         registered = []
         for x in queues:
             if      x not in self.queue_names \
-                    and component.queryUtility(self.queue_interface, name=x) != None:
+                and component.queryUtility(self.queue_interface, name=x) != None:
                 registered.append(x)
         self.queue_names.extend(registered)
         return registered
@@ -132,7 +139,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     processor = None
     current_job = None
     poll_interval = None
-
+    
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
                  queue_interface=IQueue, site_names=()):
         RunnerMixin.__init__(self, site_names)
@@ -179,8 +186,9 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                 # we may be reading from multiple queues.
                 self.poll_interval = 0
             else:
-                self.poll_interval += self.generator.uniform(1, 5)
-                self.poll_interval = min(self.poll_interval, 60)
+                self.poll_interval += self.uniform()
+                self.poll_interval = min(self.poll_interval,
+                                         self.max_sleep_time)
         except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
             logger.error('Error while processing job. Queue=[%s], error=%s',
                          self.current_queue, e)
@@ -286,9 +294,6 @@ class AsyncFailedReactor(AsyncReactor):
 
 class SingleQueueReactor(RunnerMixin, ReactorMixin):
 
-    max_sleep_time = 60
-    max_range_uniform = 5
-
     def __init__(self, queue_name, queue_interface=IQueue,
                  site_names=(), poll_interval=3):
         RunnerMixin.__init__(self, site_names)
@@ -306,10 +311,6 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
         if job is not None:
             return self.perform_job(job, self.queue)
         return False
-
-    @property
-    def uniform(self):
-        return self.generator.uniform(1, self.max_range_uniform)
 
     def run(self, sleep=time.sleep):
         self.start()
@@ -381,6 +382,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                                             self.queue_interface,
                                             self.site_names,
                                             self.poll_interval)
+                target.__parent__ = self
                 thread = Thread(target=target, name=name)
                 thread.daemon = True
                 thread.start()
