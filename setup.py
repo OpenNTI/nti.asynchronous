@@ -43,6 +43,12 @@ setup(
     namespace_packages=['nti'],
     install_requires=[
         'setuptools',
+        'nti.externalization',
+        'nti.property',
+        'nti.site',
+        'nti.schema',
+        'nti.transactions',
+        'nti.zodb',
         'BTrees',
         'gevent',
         'persistent',
@@ -56,11 +62,6 @@ setup(
         'zope.interface',
         'zope.location',
         'zope.security',
-        'nti.property',
-        'nti.site',
-        'nti.schema',
-        'nti.transactions',
-        'nti.zodb'
     ],
     extras_require={
         'test': TESTS_REQUIRE,
