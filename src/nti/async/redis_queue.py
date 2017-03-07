@@ -26,25 +26,11 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
-
-@interface.implementer(IRedisQueue)
-class RedisQueue(object):
-
-    _queue = _length = _failed_jobs = None
-
-    def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
-                 create_failed_queue=True):
+class QueueMixin(object):
+    
+    def __init__(self, redis):
         self.__redis = redis
-        self._name = job_queue_name or DEFAULT_QUEUE_NAME
-        self._hash = self._name + '/hash'
-        if create_failed_queue:
-            failed_queue_name = failed_queue_name or self._name + "/failed"
-            self._failed = RedisQueue(self.__redis,
-                                      job_queue_name=failed_queue_name,
-                                      create_failed_queue=False)
-        else:
-            self._failed = self
-
+    
     @Lazy
     def _redis(self):
         return self.__redis() if callable(self.__redis) else self.__redis
@@ -55,6 +41,50 @@ class RedisQueue(object):
         bio.seek(0)
         result = zlib.compress(bio.read())
         return result
+
+    def _put_job(self, pipe, data, tail=True, jid=None):
+        raise NotImplementedError()
+
+    def put(self, item, use_transactions=True, tail=True):
+        item = IJob(item)
+        data = self._pickle(item)
+        pipe = self._redis.pipeline()
+        logger.debug('Placing job (%s) in [%s]', item.id, self._name)
+        if use_transactions:
+            # Only place the job once the transaction has been committed.
+            transactions.do(target=self,
+                            call=self._put_job,
+                            args=(pipe, data, tail, item.id))
+        else:
+            self._put_job(pipe, data, tail, item.id)
+        return item
+
+    def _unpickle(self, data):
+        data = zlib.decompress(data)
+        bio = BytesIO(data)
+        bio.seek(0)
+        result = pickle.load(bio)
+        assert IJob.providedBy(result)
+        return result
+
+@interface.implementer(IRedisQueue)
+class RedisQueue(QueueMixin):
+
+    _queue = _length = _failed_jobs = None
+
+    def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
+                 create_failed_queue=True):
+        super(RedisQueue, self).__init__(redis)
+        self.__redis = redis
+        self._name = job_queue_name or DEFAULT_QUEUE_NAME
+        self._hash = self._name + '/hash'
+        if create_failed_queue:
+            failed_queue_name = failed_queue_name or self._name + "/failed"
+            self._failed = RedisQueue(self.__redis,
+                                      job_queue_name=failed_queue_name,
+                                      create_failed_queue=False)
+        else:
+            self._failed = self
 
     def _put_job(self, pipe, data, tail=True, jid=None):
         if tail:
@@ -78,14 +108,6 @@ class RedisQueue(object):
         else:
             self._put_job(pipe, data, tail, item.id)
         return item
-
-    def _unpickle(self, data):
-        data = zlib.decompress(data)
-        bio = BytesIO(data)
-        bio.seek(0)
-        result = pickle.load(bio)
-        assert IJob.providedBy(result)
-        return result
 
     def _hdel(self, job):
         self._redis.pipeline().hdel(self._hash, job.id).execute()
