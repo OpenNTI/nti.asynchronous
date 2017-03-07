@@ -9,9 +9,11 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import time
 import zlib
 import pickle
 from io import BytesIO
+from datetime import datetime
 
 import transaction
 
@@ -32,6 +34,7 @@ class QueueMixin(object):
     def __init__(self, redis, job_queue_name=None):
         self.__redis = redis
         self._name = job_queue_name or DEFAULT_QUEUE_NAME
+        self._hash = self._name + '/hash'
 
     @Lazy
     def _redis(self):
@@ -72,6 +75,21 @@ class QueueMixin(object):
     def __str__(self):
         return self._name
 
+    def keys(self):
+        result = self._redis.hkeys(self._hash)
+        return result or ()
+
+    def __len__(self):
+        result = self._redis.llen(self._name)
+        return result or 0
+
+    def __contains__(self, key):
+        result = self._redis.hexists(self._hash, key)
+        return bool(result)
+
+    def __nonzero__(self):
+        return bool(len(self))
+
 
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
@@ -82,7 +100,6 @@ class RedisQueue(QueueMixin):
                  create_failed_queue=True):
         super(RedisQueue, self).__init__(redis, job_queue_name)
         self.__redis = redis
-        self._hash = self._name + '/hash'
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = RedisQueue(self.__redis,
@@ -101,11 +118,10 @@ class RedisQueue(QueueMixin):
         pipe.execute()
 
     def _hdel(self, job):
-        self._redis.pipeline().hdel(self._hash, job.id).execute()
+        self._redis.hdel(self._hash, job.id)
 
     def all(self, unpickle=True):
-        data = self._redis.pipeline().lrange(self._name, 0, -1).execute()
-        data = data[0] if data and data[0] else None
+        data = self._redis.lrange(self._name, 0, -1)
         if unpickle:
             result = [self._unpickle(x) for x in data or ()]
         else:
@@ -119,11 +135,11 @@ class RedisQueue(QueueMixin):
 
     def claim(self, default=None):
         # once we get the job from redis, it's remove from it
-        data = self._redis.pipeline().lpop(self._name).execute()
-        if not data or not data[0]:
+        data = self._redis.lpop(self._name)
+        if not data:
             return default
 
-        job = self._unpickle(data[0])
+        job = self._unpickle(data)
         self._hdel(job)  # unset
         logger.debug("Job (%s) claimed", job.id)
 
@@ -134,16 +150,16 @@ class RedisQueue(QueueMixin):
                             self._name, job.id)
                 # We do not want to claim any jobs on transaction abort.
                 # Add our job back to the front of the queue.
-                self._redis.pipeline().lpush(self._name, data[0]) \
-                    .hset(self._hash, job.id, '1').execute()
+                self._redis.pipeline().lpush(self._name, data) \
+                           .hset(self._hash, job.id, '1').execute()
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job
 
     def empty(self):
-        keys = self._redis.pipeline().delete(
-            self._name).hkeys(self._hash).execute()
+        keys = self._redis.pipeline().delete(self._name) \
+                          .hkeys(self._hash).execute()
         if keys and keys[1]:
-            self._redis.pipeline().hdel(self._hash, *keys[1]).execute()
+            self._redis.hdel(self._hash, *keys[1])
             return keys[1]
         return ()
     reset = empty
@@ -161,34 +177,19 @@ class RedisQueue(QueueMixin):
         return ()
 
     def __repr__(self):
-        return "%s(%s,%s)" % (self.__class__.__name__, self._name, self._failed._name)
-
-    def __len__(self):
-        result = self._redis.pipeline().llen(self._name).execute()
-        return result[0] if result and result[0] is not None else 0
-
-    def keys(self):
-        result = self._redis.pipeline().hkeys(self._hash).execute()
-        return result[0] if result else ()
-
-    def __contains__(self, key):
-        result = self._redis.pipeline().hexists(self._hash, key).execute()
-        return bool(result[0]) if result else False
+        return "%s(%s,%s)" % (self.__class__.__name__, 
+                              self._name, 
+                              self._failed._name)
 
     def __iter__(self):
-        all_jobs = self._redis.pipeline().lrange(self._name, 0, -1).execute()
-        all_jobs = all_jobs[0] if all_jobs else ()
+        all_jobs = self._redis.lrange(self._name, 0, -1)
         for data in all_jobs or ():
             if data is not None:
                 job = self._unpickle(data)
                 yield job
 
-    def __nonzero__(self):
-        return bool(len(self))
-
     def __getitem__(self, index):
-        data = self._redis.pipeline().lindex(self._name, index).execute()
-        data = data[0] if data and data[0] else None
+        data = self._redis.lindex(self._name, index)
         if data is None:
             raise IndexError(index)
         job = self._unpickle(data)
@@ -196,10 +197,48 @@ class RedisQueue(QueueMixin):
 
 Queue = RedisQueue  # alias
 
+MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
+
+
 @interface.implementer(IRedisQueue)
 class PriorityQueue(QueueMixin):
-    
-    def __init__(self, redis, job_queue_name=None, 
+
+    def __init__(self, redis, job_queue_name=None,
                  failed_queue_name=None, create_failed_queue=True):
-        super(RedisQueue, self).__init__(redis, job_queue_name)
-    
+        super(PriorityQueue, self).__init__(redis, job_queue_name)
+
+    def _put_job(self, pipe, data, tail=True, jid=None):
+        assert jid, 'must provide a job id'
+        if tail:
+            score = MAX_TIMESTAMP - time.time()
+        else:
+            score = time.time()
+        pipe.zadd(self._name, score, jid)
+        pipe.hset(self._hash, jid, data)
+        pipe.execute()
+
+    @property
+    def _first(self):
+        return self._redis.zrevrange(self._name, 0, 0)[0]
+
+    def claim(self, default=None):
+        try:
+            _item = self._first
+            while self._redis.zrem(self._name, _item) == 0:
+                # Somebody else also got the same item and removed before us
+                # Try again
+                _item = self._first
+            # We managed to pop the item from the queue
+            self._redis.hdel(self._hash, _item)
+            return _item
+        except IndexError:
+            # Queue is empty
+            pass
+        return default
+
+    def __iter__(self):
+        all_jobs = self._redis.hgetall(self._hash) or {}
+        for data in all_jobs.values():
+            if data is not None:
+                job = self._unpickle(data)
+                yield job

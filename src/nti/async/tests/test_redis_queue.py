@@ -21,11 +21,8 @@ from nti.async.job import create_job
 
 from nti.async.redis_queue import RedisQueue
 
-from nti.transactions import transactions
-
 from nti.async.tests import AsyncTestCase
 
-from nti.dataserver.tests import mock_dataserver
 from nti.dataserver.tests.mock_redis import InMemoryMockRedis
 
 
@@ -37,7 +34,7 @@ def mock_work():
     return 42
 
 
-class TesRedistQueue(AsyncTestCase):
+class TestRedisQueue(AsyncTestCase):
 
     def test_empty(self):
         queue = RedisQueue(redis=_redis())
@@ -128,63 +125,3 @@ class TesRedistQueue(AsyncTestCase):
 
         queue.empty()
         assert_that(queue, has_length(0))
-
-
-def _pass_job():
-    pass
-
-
-def _fail_job():
-    raise Exception()
-
-
-class TestJobs(mock_dataserver.DataserverLayerTest):
-
-    @mock_dataserver.WithMockDS
-    def test_transactions(self):
-
-        queue = RedisQueue(redis=_redis())
-        assert_that(queue, has_length(0))
-
-        # Fill it up
-        with mock_dataserver.mock_db_trans(self.ds):
-            queue.put(create_job(_pass_job))
-            queue.put(create_job(_fail_job))
-            queue.put(create_job(_pass_job))
-
-        assert_that(queue, has_length(3))
-
-        # Simple job
-        with mock_dataserver.mock_db_trans(self.ds):
-            claimed = queue.claim()
-            assert_that(claimed, not_none())
-            claimed()
-
-        assert_that(queue, has_length(2))
-
-        # Normal erring job
-        with mock_dataserver.mock_db_trans(self.ds):
-            claimed = queue.claim()
-            assert_that(claimed, not_none())
-            claimed()
-
-        assert_that(queue, has_length(1))
-
-        def _fail():
-            raise Exception()
-
-        # Job that fails during commit
-        try:
-            with mock_dataserver.mock_db_trans(self.ds):
-                claimed = queue.claim()
-                assert_that(claimed, not_none())
-                claimed()
-
-                transactions.do(target=self,
-                                call=_fail,
-                                args=None)
-        except:
-            pass
-
-        # Job failed and is back on queue
-        assert_that(queue, has_length(1))
