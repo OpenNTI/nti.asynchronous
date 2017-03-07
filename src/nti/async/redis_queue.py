@@ -211,12 +211,13 @@ class PriorityQueue(QueueMixin):
                                          job_queue_name=failed_queue_name,
                                          create_failed_queue=False)
 
-    def _put_job(self, pipe, data, tail=True, jid=None):
+    def _put_job(self, pipe, data, tail=True, jid=None, score=None):
         assert jid, 'must provide a job id'
-        if tail:
-            score = MAX_TIMESTAMP - time.time()
-        else:
-            score = time.time()
+        if score is None:
+            if tail:
+                score = MAX_TIMESTAMP - time.time()
+            else:
+                score = time.time()
         pipe.zadd(self._name, score, jid)
         pipe.hset(self._hash, jid, data)
         pipe.execute()
@@ -246,7 +247,7 @@ class PriorityQueue(QueueMixin):
                     # We do not want to claim any jobs on transaction abort.
                     # Add our job back to the front of the queue.
                     pipe = self._redis.pipeline()
-                    self._put_job(pipe, data, tail=False, jid=jid)
+                    self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
             transaction.get().addAfterCommitHook(after_commit_or_abort)
             return job
         except IndexError:
