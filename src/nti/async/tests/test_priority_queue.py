@@ -18,8 +18,6 @@ from hamcrest import has_property
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
-import unittest
-
 from nti.async.interfaces import IRedisQueue
 
 from nti.async.job import create_job
@@ -32,14 +30,13 @@ from nti.dataserver.tests.mock_redis import InMemoryMockRedis
 
 
 def _redis():
-    return InMemoryMockRedis()
+    return InMemoryMockRedis(db=100)
 
 
 def mock_work():
     return 42
 
 
-@unittest.SkipTest
 class TestPriorityQueue(AsyncTestCase):
 
     def _makeOne(self):

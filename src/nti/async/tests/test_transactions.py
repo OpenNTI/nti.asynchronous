@@ -24,7 +24,7 @@ from nti.dataserver.tests.mock_redis import InMemoryMockRedis
 
 
 def _redis():
-    return InMemoryMockRedis()
+    return InMemoryMockRedis(db=300)
 
 
 def _pass_job():

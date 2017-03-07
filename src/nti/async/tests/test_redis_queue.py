@@ -32,7 +32,7 @@ from nti.dataserver.tests.mock_redis import InMemoryMockRedis
 
 
 def _redis():
-    return InMemoryMockRedis()
+    return InMemoryMockRedis(db=200)
 
 
 def mock_work():
