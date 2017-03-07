@@ -26,11 +26,13 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
+
 class QueueMixin(object):
-    
-    def __init__(self, redis):
+
+    def __init__(self, redis, job_queue_name=None):
         self.__redis = redis
-    
+        self._name = job_queue_name or DEFAULT_QUEUE_NAME
+
     @Lazy
     def _redis(self):
         return self.__redis() if callable(self.__redis) else self.__redis
@@ -67,6 +69,10 @@ class QueueMixin(object):
         assert IJob.providedBy(result)
         return result
 
+    def __str__(self):
+        return self._name
+
+
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -74,9 +80,8 @@ class RedisQueue(QueueMixin):
 
     def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
                  create_failed_queue=True):
-        super(RedisQueue, self).__init__(redis)
+        super(RedisQueue, self).__init__(redis, job_queue_name)
         self.__redis = redis
-        self._name = job_queue_name or DEFAULT_QUEUE_NAME
         self._hash = self._name + '/hash'
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
@@ -221,9 +226,6 @@ class RedisQueue(QueueMixin):
         if self._failed is not self:
             return self._failed.all(unpickle)
         return ()
-
-    def __str__(self):
-        return self._name
 
     def __repr__(self):
         return "%s(%s,%s)" % (self.__class__.__name__, self._name, self._failed._name)
