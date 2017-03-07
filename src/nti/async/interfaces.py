@@ -132,7 +132,7 @@ class IJob(IAttributeAnnotatable, IContained):
         for the call.
         """
     run = __call__
-    
+
     def is_new():
         """
         Check if the job is new
@@ -150,12 +150,13 @@ class IJob(IAttributeAnnotatable, IContained):
         Check if the job is running
         """
     isRunning = is_running
-    
+
     def has_failed():
         """
         check if job has failed
         """
     hasFailed = has_failed
+
 
 class IAsyncReactor(interface.Interface):
     """
@@ -163,7 +164,7 @@ class IAsyncReactor(interface.Interface):
     """
 
     queue_names = interface.Attribute("""Queue names.""")
-    
+
     def stop():
         """
         Stop the processor
@@ -183,11 +184,12 @@ class IAsyncReactor(interface.Interface):
         """
         Return if this processor is running
         """
-    
+
     def is_paused():
         """
         Return if this processor has been paused
         """
+
 
 class IReactorEvent(IObjectEvent):
     pass
