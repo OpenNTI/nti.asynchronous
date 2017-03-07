@@ -152,7 +152,7 @@ class RedisQueue(QueueMixin):
             return default
 
         job = self._unpickle(data)
-        self._redis.hdel(self._hash, job.id) # unset
+        self._redis.hdel(self._hash, job.id)  # unset
         logger.debug("Job (%s) claimed", job.id)
 
         # make sure we put the job back if the transaction fails
@@ -262,6 +262,11 @@ class PriorityQueue(QueueMixin):
             return keys[1]
         return ()
     reset = empty
+
+    def remove(self, item):
+        if IJob.providedBy(item):
+            item = item.id
+        del self[item]
 
     def __getitem__(self, key):
         data = self._redis.hget(self._hash, key)
