@@ -100,75 +100,8 @@ class RedisQueue(QueueMixin):
             pipe.hset(self._hash, jid, '1')
         pipe.execute()
 
-    def put(self, item, use_transactions=True, tail=True):
-        item = IJob(item)
-        data = self._pickle(item)
-        pipe = self._redis.pipeline()
-        logger.debug('Placing job (%s) in [%s]', item.id, self._name)
-        if use_transactions:
-            # Only place the job once the transaction has been committed.
-            transactions.do(target=self,
-                            call=self._put_job,
-                            args=(pipe, data, tail, item.id))
-        else:
-            self._put_job(pipe, data, tail, item.id)
-        return item
-
     def _hdel(self, job):
         self._redis.pipeline().hdel(self._hash, job.id).execute()
-
-    def remove_at(self, index, unpickle=True):
-        length = len(self)
-        if index < 0:
-            index += length
-            if index < 0:
-                raise IndexError(index + length)
-        if index >= length:
-            raise IndexError(index)
-
-        data = self._redis.pipeline().\
-            lrange(self._name, 0, index - 1).\
-            lindex(self._name, index).\
-            lrange(self._name, index + 1, -1).\
-            execute()
-
-        result = data[1] if data and len(data) >= 2 and data[1] else None
-        if not result:
-            raise ValueError("Invalid data at index %s" % index)
-
-        new_items = []
-
-        def _append(items):
-            new_items.extend(i for i in items or () if i is not None)
-        _append(data[0] if data and len(data) >= 1 else ())
-        _append(data[2] if data and len(data) >= 3 else ())
-        if new_items:
-            self._redis.pipeline().\
-                delete(self._name).\
-                rpush(self._name, *new_items).\
-                execute()
-
-        result = self._unpickle(result) if unpickle else result
-        self._hdel(result)  # unset
-        return result
-    removeAt = remove_at
-
-    def pull(self, index=0):
-        data = None
-        if index == 0:
-            data = self._redis.pipeline().lpop(self._name).execute()
-            data = data[0] if data and data[0] else None
-        elif index == -1:
-            data = self._redis.pipeline().rpop(self._name).execute()
-            data = data[0] if data and data[0] else None
-        else:
-            data = self.remove_at(index, result=False)
-
-        if data is None:
-            raise IndexError(index)
-        job = self._unpickle(data)
-        self._hdel(job)  # unset
-        return job
 
     def all(self, unpickle=True):
         data = self._redis.pipeline().lrange(self._name, 0, -1).execute()
@@ -262,3 +195,11 @@ class RedisQueue(QueueMixin):
         return job
 
 Queue = RedisQueue  # alias
+
+@interface.implementer(IRedisQueue)
+class PriorityQueue(QueueMixin):
+    
+    def __init__(self, redis, job_queue_name=None, 
+                 failed_queue_name=None, create_failed_queue=True):
+        super(RedisQueue, self).__init__(redis, job_queue_name)
+    

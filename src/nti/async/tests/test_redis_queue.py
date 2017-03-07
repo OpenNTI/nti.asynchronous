@@ -18,13 +18,10 @@ import operator
 import transaction
 
 from nti.async.job import create_job
+
 from nti.async.redis_queue import RedisQueue
 
 from nti.transactions import transactions
-
-from nti.app.testing.application_webtest import ApplicationLayerTest
-
-from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.async.tests import AsyncTestCase
 
@@ -83,7 +80,7 @@ class TesRedistQueue(AsyncTestCase):
         claimed = queue.claim()
         assert_that(claimed, equal_to(job2))
 
-        pulled = queue.pull()
+        pulled = queue.claim()
         assert_that(pulled, equal_to(job3))
         assert_that(list(queue), is_([job4, job5]))
         assert_that(queue, has_length(2))
@@ -94,18 +91,12 @@ class TesRedistQueue(AsyncTestCase):
         except NotImplementedError:
             pass
 
-        job6 = queue.put(create_job(operator.mul, jargs=(34, 1)))
+        queue.put(create_job(operator.mul, jargs=(34, 1)))
         job7 = queue.put(create_job(operator.mul, jargs=(34, 1)))
         transaction.commit()
         assert_that(queue, has_length(4))
         assert_that(queue.keys(), has_length(4))
         assert_that(job7.id, is_in(queue))
-
-        removed = queue.removeAt(2)
-        assert_that(removed, equal_to(job6))
-        assert_that(queue, has_length(3))
-        assert_that(list(queue), is_([job4, job5, job7]))
-        assert_that(queue.keys(), has_length(3))
 
         queue.empty()
         assert_that(queue, has_length(0))
@@ -118,15 +109,10 @@ class TesRedistQueue(AsyncTestCase):
         assert_that(queue.keys(), has_length(2))
 
         first = queue[0]
-        assert_that(queue.pull(0), equal_to(first))
+        assert_that(first, is_(not_none()))
 
         last = queue[-1]
-        assert_that(queue.pull(-1), equal_to(last))
-
-        assert_that(queue.put(first), equal_to(first))
-        assert_that(queue.put(last), equal_to(last))
-        transaction.commit()
-        assert_that(queue, has_length(2))
+        assert_that(last, is_(not_none()))
 
         data = queue.all(unpickle=False)
         assert_that(data, has_length(2))
@@ -152,9 +138,9 @@ def _fail_job():
     raise Exception()
 
 
-class TestJobs(ApplicationLayerTest):
+class TestJobs(mock_dataserver.DataserverLayerTest):
 
-    @WithSharedApplicationMockDS
+    @mock_dataserver.WithMockDS
     def test_transactions(self):
 
         queue = RedisQueue(redis=_redis())
