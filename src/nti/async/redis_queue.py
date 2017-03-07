@@ -35,6 +35,7 @@ class QueueMixin(object):
         self.__redis = redis
         self._name = job_queue_name or DEFAULT_QUEUE_NAME
         self._hash = self._name + '/hash'
+        self._failed = self
 
     @Lazy
     def _redis(self):
@@ -72,8 +73,25 @@ class QueueMixin(object):
         assert IJob.providedBy(result)
         return result
 
+    def put_failed(self, item):
+        self._failed.put(item)
+    putFailed = put_failed
+
+    def get_failed_queue(self):
+        return self._failed
+
+    def failed(self, unpickle=True):
+        if self._failed is not self:
+            return self._failed.all(unpickle)
+        return ()
+
     def __str__(self):
         return self._name
+
+    def __repr__(self):
+        return "%s(%s,%s)" % (self.__class__.__name__,
+                              self._name,
+                              self._failed._name)
 
     def keys(self):
         result = self._redis.hkeys(self._hash)
@@ -99,14 +117,11 @@ class RedisQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
                  create_failed_queue=True):
         super(RedisQueue, self).__init__(redis, job_queue_name)
-        self.__redis = redis
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
-            self._failed = RedisQueue(self.__redis,
+            self._failed = RedisQueue(redis,
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
-        else:
-            self._failed = self
 
     def _put_job(self, pipe, data, tail=True, jid=None):
         if tail:
@@ -116,9 +131,6 @@ class RedisQueue(QueueMixin):
         if jid is not None:
             pipe.hset(self._hash, jid, '1')
         pipe.execute()
-
-    def _hdel(self, job):
-        self._redis.hdel(self._hash, job.id)
 
     def all(self, unpickle=True):
         data = self._redis.lrange(self._name, 0, -1)
@@ -140,7 +152,7 @@ class RedisQueue(QueueMixin):
             return default
 
         job = self._unpickle(data)
-        self._hdel(job)  # unset
+        self._redis.hdel(self._hash, job.id) # unset
         logger.debug("Job (%s) claimed", job.id)
 
         # make sure we put the job back if the transaction fails
@@ -150,8 +162,8 @@ class RedisQueue(QueueMixin):
                             self._name, job.id)
                 # We do not want to claim any jobs on transaction abort.
                 # Add our job back to the front of the queue.
-                self._redis.pipeline().lpush(self._name, data) \
-                           .hset(self._hash, job.id, '1').execute()
+                pipe = self._redis.pipeline()
+                self._put_job(pipe, data, tail=False, jid=job.id)
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job
 
@@ -163,23 +175,6 @@ class RedisQueue(QueueMixin):
             return keys[1]
         return ()
     reset = empty
-
-    def put_failed(self, item):
-        self._failed.put(item)
-    putFailed = put_failed
-
-    def get_failed_queue(self):
-        return self._failed
-
-    def failed(self, unpickle=True):
-        if self._failed is not self:
-            return self._failed.all(unpickle)
-        return ()
-
-    def __repr__(self):
-        return "%s(%s,%s)" % (self.__class__.__name__, 
-                              self._name, 
-                              self._failed._name)
 
     def __iter__(self):
         all_jobs = self._redis.lrange(self._name, 0, -1)
@@ -195,6 +190,10 @@ class RedisQueue(QueueMixin):
         job = self._unpickle(data)
         return job
 
+    def __delitem__(self, index):
+        raise NotImplementedError()
+
+
 Queue = RedisQueue  # alias
 
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
@@ -206,6 +205,11 @@ class PriorityQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None,
                  failed_queue_name=None, create_failed_queue=True):
         super(PriorityQueue, self).__init__(redis, job_queue_name)
+        if create_failed_queue:
+            failed_queue_name = failed_queue_name or self._name + "/failed"
+            self._failed = PriorityQueue(redis,
+                                         job_queue_name=failed_queue_name,
+                                         create_failed_queue=False)
 
     def _put_job(self, pipe, data, tail=True, jid=None):
         assert jid, 'must provide a job id'
@@ -223,18 +227,51 @@ class PriorityQueue(QueueMixin):
 
     def claim(self, default=None):
         try:
-            _item = self._first
-            while self._redis.zrem(self._name, _item) == 0:
+            jid = self._first
+            while self._redis.zrem(self._name, jid) == 0:
                 # Somebody else also got the same item and removed before us
                 # Try again
-                _item = self._first
+                jid = self._first
             # We managed to pop the item from the queue
-            self._redis.hdel(self._hash, _item)
-            return _item
+            # remove job
+            data = self._redis.pipeline().hget(self._hash, jid) \
+                              .hdel(self._hash, jid).execute()[0]
+            job = self._unpickle(data)
+
+            # make sure we put the job back if the transaction fails
+            def after_commit_or_abort(success=False):
+                if not success:
+                    logger.warn("Pushing job back onto queue on abort [%s] (%s)",
+                                self._name, job.id)
+                    # We do not want to claim any jobs on transaction abort.
+                    # Add our job back to the front of the queue.
+                    pipe = self._redis.pipeline()
+                    self._put_job(pipe, data, tail=False, jid=jid)
+            transaction.get().addAfterCommitHook(after_commit_or_abort)
+            return job
         except IndexError:
             # Queue is empty
             pass
         return default
+
+    def empty(self):
+        keys = self._redis.pipeline().zremrangebyscore(self._name, 0, MAX_TIMESTAMP) \
+                          .hkeys(self._hash).execute()
+        if keys and keys[1]:
+            self._redis.hdel(self._hash, *keys[1])
+            return keys[1]
+        return ()
+    reset = empty
+
+    def __getitem__(self, key):
+        data = self._redis.hget(self._hash, key)
+        if data is not None:
+            return self._unpickle(data)
+        raise KeyError(key)
+
+    def __delitem__(self, key):
+        if self._redis.zrem(self._name, key):
+            self._redis.hdel(self._hash, key)
 
     def __iter__(self):
         all_jobs = self._redis.hgetall(self._hash) or {}
