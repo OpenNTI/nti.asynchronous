@@ -14,8 +14,13 @@ from hamcrest import equal_to
 from hamcrest import has_length
 from hamcrest import assert_that
 
+from nti.testing.matchers import validly_provides
+from nti.testing.matchers import verifiably_provides
+
 import operator
 import transaction
+
+from nti.async.interfaces import IRedisQueue
 
 from nti.async.job import create_job
 
@@ -35,6 +40,11 @@ def mock_work():
 
 
 class TestRedisQueue(AsyncTestCase):
+
+    def test_model(self):
+        queue = RedisQueue(redis=_redis())
+        assert_that(queue, validly_provides(IRedisQueue))
+        assert_that(queue, verifiably_provides(IRedisQueue))
 
     def test_empty(self):
         queue = RedisQueue(redis=_redis())

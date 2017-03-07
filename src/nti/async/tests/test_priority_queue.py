@@ -15,7 +15,12 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_property
 
+from nti.testing.matchers import validly_provides
+from nti.testing.matchers import verifiably_provides
+
 import unittest
+
+from nti.async.interfaces import IRedisQueue
 
 from nti.async.job import create_job
 
@@ -40,6 +45,11 @@ class TestPriorityQueue(AsyncTestCase):
     def _makeOne(self):
         queue = PriorityQueue(redis=_redis())
         return queue
+
+    def test_model(self):
+        queue = self._makeOne()
+        assert_that(queue, validly_provides(IRedisQueue))
+        assert_that(queue, verifiably_provides(IRedisQueue))
 
     def test_operations(self):
         queue = self._makeOne()

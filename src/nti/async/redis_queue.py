@@ -23,6 +23,7 @@ from nti.async.interfaces import IJob
 from nti.async.interfaces import IRedisQueue
 
 from nti.property.property import Lazy
+from nti.property.property import alias
 
 from nti.transactions import transactions
 
@@ -31,6 +32,9 @@ DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
 class QueueMixin(object):
 
+    __parent__ = None
+    __name__ = alias('_name')
+    
     def __init__(self, redis, job_queue_name=None):
         self.__redis = redis
         self._name = job_queue_name or DEFAULT_QUEUE_NAME
@@ -177,11 +181,7 @@ class RedisQueue(QueueMixin):
     reset = empty
 
     def __iter__(self):
-        all_jobs = self._redis.lrange(self._name, 0, -1)
-        for data in all_jobs or ():
-            if data is not None:
-                job = self._unpickle(data)
-                yield job
+        return iter(self.all(True))
 
     def __getitem__(self, index):
         data = self._redis.lindex(self._name, index)
@@ -268,6 +268,18 @@ class PriorityQueue(QueueMixin):
             item = item.id
         del self[item]
 
+    def all(self, unpickle=True):
+        all_jobs = self._redis.hgetall(self._hash) or {}
+        if not unpickle:
+            result = [x for x in all_jobs.values() if x is not None]
+        else:
+            result = []
+            for data in all_jobs.values():
+                if data is not None:
+                    result.append(self._unpickle(data))
+        return result or ()
+    values = all
+
     def __getitem__(self, key):
         data = self._redis.hget(self._hash, key)
         if data is not None:
@@ -279,8 +291,4 @@ class PriorityQueue(QueueMixin):
             self._redis.hdel(self._hash, key)
 
     def __iter__(self):
-        all_jobs = self._redis.hgetall(self._hash) or {}
-        for data in all_jobs.values():
-            if data is not None:
-                job = self._unpickle(data)
-                yield job
+        return iter(self.all(True))
