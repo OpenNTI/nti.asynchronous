@@ -42,13 +42,6 @@ class IBaseQueue(IContained):
         Put an IJob adapted from item into the queue.  Returns IJob.
         """
 
-    def pull(index=0):
-        """
-        Remove and return a job, by default from the front of the queue.
-
-        Raise IndexError if index does not exist.
-        """
-
     def all():
         """
         Return all elements in this queue
