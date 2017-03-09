@@ -190,6 +190,8 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     def process_job(self):
         result = True
         try:
+            # XXX: Should we pull jobs outside of transaction to
+            # avoid race conditions?
             if self.transaction_runner(self.execute_job,
                                        sleep=self.trx_sleep,
                                        retries=self.trx_retries):
