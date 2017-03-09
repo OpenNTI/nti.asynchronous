@@ -52,7 +52,7 @@ class RunnerMixin(object):
     current_queue = None
     max_sleep_time = DEFAULT_MAX_SLEEP_TIME
     max_range_uniform = DEFAULT_MAX_UNIFORM
-    
+
     def __init__(self, site_names=(),
                  max_sleep_time=None,
                  max_range_uniform=None):
@@ -79,6 +79,7 @@ class RunnerMixin(object):
                      queue, job.id)
         return True
 
+    @Lazy
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
         if self.site_names:
@@ -189,9 +190,9 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     def process_job(self):
         result = True
         try:
-            if self.transaction_runner()(self.execute_job,
-                                         sleep=self.trx_sleep,
-                                         retries=self.trx_retries):
+            if self.transaction_runner(self.execute_job,
+                                       sleep=self.trx_sleep,
+                                       retries=self.trx_retries):
                 # Do not sleep if we have work to do, especially since
                 # we may be reading from multiple queues.
                 self.poll_interval = 0
@@ -284,9 +285,9 @@ class AsyncFailedReactor(AsyncReactor):
     def process_job(self):
         for queue in self.queues:
             self.current_queue = queue  # set proper queue
-            count = self.transaction_runner()(self.execute_job,
-                                              retries=2,
-                                              sleep=1)
+            count = self.transaction_runner(self.execute_job,
+                                            retries=2,
+                                            sleep=1)
             logger.info('Finished processing queue [%s] [count=%s]',
                         queue._name, count)
 
@@ -331,7 +332,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
             while self.is_running():
                 try:
                     try:
-                        runner = self.transaction_runner()
+                        runner = self.transaction_runner
                         if not runner(self.execute_job,
                                       sleep=self.trx_sleep,
                                       retries=self.trx_retries):
