@@ -32,6 +32,7 @@ from nti.async.reactor import ThreadedReactor
 from nti.async.reactor import AsyncFailedReactor
 
 from nti.async.redis_queue import RedisQueue
+from nti.async.redis_queue import PriorityQueue
 
 from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.interfaces import IDataserverTransactionRunner
@@ -76,6 +77,8 @@ class Processor(object):
         arg_parser.add_argument('--site', dest='site', help="Application SITE")
         arg_parser.add_argument('--redis', help="Use redis queues",
                                 action='store_true', dest='redis')
+        arg_parser.add_argument('--priority', help="Priority redis queue",
+                                action='store_true', dest='priority')
         arg_parser.add_argument('-r', '--max_range_uniform', help="Max sleep range tic when no jobs",
                                 default=DEFAULT_MAX_UNIFORM, dest='max_range_uniform', type=int)
         arg_parser.add_argument('-s', '--max_sleep_time', help="Max sleep time when no jobs",
@@ -94,12 +97,12 @@ class Processor(object):
         ei = DEFAULT_LOG_FORMAT
         logging.root.handlers[0].setFormatter(zope_formatter(ei))
 
-    def setup_redis_queues(self, queue_names):
+    def setup_redis_queues(self, queue_names, clazz=RedisQueue):
         all_queues = list(queue_names)
         gsm = component.globalSiteManager
         redis = component.getUtility(IRedisClient)
         for name in all_queues:
-            queue = RedisQueue(redis, name)
+            queue = clazz(redis, name)
             gsm.registerUtility(queue, IRedisQueue, name)
 
     def load_library(self):
@@ -126,7 +129,10 @@ class Processor(object):
         if getattr(args, 'redis', False):
             queue_interface = IRedisQueue
             logger.info("Using redis queues")
-            self.setup_redis_queues(queue_names)
+            if getattr(args, 'priority', False):
+                self.setup_redis_queues(queue_names, clazz=PriorityQueue)
+            else:
+                self.setup_redis_queues(queue_names, clazz=RedisQueue)
         else:
             queue_interface = IQueue
 
