@@ -13,6 +13,7 @@ import time
 import zlib
 import pickle
 from io import BytesIO
+from hashlib import sha1
 from datetime import datetime
 
 import transaction
@@ -34,7 +35,7 @@ class QueueMixin(object):
 
     __parent__ = None
     __name__ = alias('_name')
-    
+
     def __init__(self, redis, job_queue_name=None):
         self.__redis = redis
         self._name = job_queue_name or DEFAULT_QUEUE_NAME
@@ -192,11 +193,21 @@ class RedisQueue(QueueMixin):
 
     def __delitem__(self, index):
         raise NotImplementedError()
-
-
 Queue = RedisQueue  # alias
 
+
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
+
+CLAIM_SCRIPT = b"""
+    local x = redis.call("zrevrange", KEYS[1], 0, 0)
+    if x[1] == nil then
+        return nil
+    else
+        redis.call("zrem", KEYS[1], x[1])
+        return x[1]
+    end
+"""
+CLAIM_SCRIPT_HASH = sha1(CLAIM_SCRIPT).hexdigest()
 
 
 @interface.implementer(IRedisQueue)
@@ -226,34 +237,39 @@ class PriorityQueue(QueueMixin):
     def _first(self):
         return self._redis.zrevrange(self._name, 0, 0)[0]
 
-    def claim(self, default=None):
+    def _do_claim(self, default=None):
         try:
             jid = self._first
             while self._redis.zrem(self._name, jid) == 0:
                 # Somebody else also got the same item and removed before us
-                # Try again
+                # Try again.
                 jid = self._first
-            # We managed to pop the item from the queue
-            # remove job
-            data = self._redis.pipeline().hget(self._hash, jid) \
-                              .hdel(self._hash, jid).execute()[0]
-            job = self._unpickle(data)
-
-            # make sure we put the job back if the transaction fails
-            def after_commit_or_abort(success=False):
-                if not success:
-                    logger.warn("Pushing job back onto queue on abort [%s] (%s)",
-                                self._name, job.id)
-                    # We do not want to claim any jobs on transaction abort.
-                    # Add our job back to the front of the queue.
-                    pipe = self._redis.pipeline()
-                    self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
-            transaction.get().addAfterCommitHook(after_commit_or_abort)
-            return job
         except IndexError:
             # Queue is empty
             pass
         return default
+
+    def claim(self, default=None):
+        jid = self._do_claim(default)
+        if jid is default:
+            return default
+        # We managed to pop the item from the queue
+        # remove job
+        data = self._redis.pipeline().hget(self._hash, jid) \
+                          .hdel(self._hash, jid).execute()[0]
+        job = self._unpickle(data)
+
+        # make sure we put the job back if the transaction fails
+        def after_commit_or_abort(success=False):
+            if not success:
+                logger.warn("Pushing job back onto queue on abort [%s] (%s)",
+                            self._name, job.id)
+                # We do not want to claim any jobs on transaction abort.
+                # Add our job back to the front of the queue.
+                pipe = self._redis.pipeline()
+                self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
+        transaction.get().addAfterCommitHook(after_commit_or_abort)
+        return job
 
     def empty(self):
         keys = self._redis.pipeline().zremrangebyscore(self._name, 0, MAX_TIMESTAMP) \
