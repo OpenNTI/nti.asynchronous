@@ -119,6 +119,11 @@ class QueueMixin(object):
         return bool(len(self))
 
 
+LPOP_SCRIPT = b"""
+    return redis.call("lpop", KEYS[1])
+"""
+LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
+
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -155,10 +160,22 @@ class RedisQueue(QueueMixin):
         # jobs are pickled
         raise NotImplementedError()
 
+    def __claim(self):
+        return self._redis.lpop(self._name)
+
+    def _do_claim(self):
+        try:
+            result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
+        except NoScriptError:
+            result = self._redis.eval(LPOP_SCRIPT, 1, self._name)
+        except AttributeError:
+            result = self.__claim()
+        return result
+
     def claim(self, default=None):
         # once we get the job from redis, it's remove from it
-        data = self._redis.lpop(self._name)
-        if not data:
+        data = self._do_claim()
+        if data is None:
             return default
 
         job = self._unpickle(data)
@@ -238,7 +255,7 @@ class PriorityQueue(QueueMixin):
         pipe.hset(self._hash, jid, data)
         pipe.execute()
 
-    def __claim(self, default=None):
+    def __claim(self):
         try:
             jid = self._redis.zrevrange(self._name, 0, 0)[0]
             while self._redis.zrem(self._name, jid) == 0:
@@ -249,20 +266,19 @@ class PriorityQueue(QueueMixin):
         except IndexError:
             # Queue is empty
             pass
-        return default
 
-    def _do_claim(self, default=None):
+    def _do_claim(self):
         try:
             result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
         except NoScriptError:
             result = self._redis.eval(CLAIM_SCRIPT, 1, self._name)
         except AttributeError:
-            result = self.__claim(default)
-        return default if result is None else result
+            result = self.__claim()
+        return result
 
     def claim(self, default=None):
-        jid = self._do_claim(default)
-        if jid is default:
+        jid = self._do_claim()
+        if jid is None:
             return default
         # We managed to pop the item from the queue. remove job
         data = self._redis.pipeline().hget(self._hash, jid) \
