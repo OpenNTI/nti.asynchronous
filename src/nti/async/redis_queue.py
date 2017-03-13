@@ -13,12 +13,9 @@ import time
 import zlib
 import pickle
 from io import BytesIO
-from hashlib import sha1
 from datetime import datetime
 
 import transaction
-
-from redis.exceptions import NoScriptError
 
 from zope import interface
 
@@ -116,12 +113,6 @@ class QueueMixin(object):
         return bool(len(self))
 
 
-LPOP_SCRIPT = b"""
-    return redis.call("lpop", KEYS[1])
-"""
-LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
-
-
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -158,17 +149,8 @@ class RedisQueue(QueueMixin):
         # jobs are pickled
         raise NotImplementedError()
 
-    def __claim(self):
-        return self._redis.lpop(self._name)
-
     def _do_claim(self):
-        try:
-            result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
-        except NoScriptError:
-            result = self._redis.eval(LPOP_SCRIPT, 1, self._name)
-        except AttributeError:
-            result = self.__claim()
-        return result
+        return self._redis.lpop(self._name)
 
     def claim(self, default=None):
         # once we get the job from redis, it's remove from it
@@ -218,17 +200,6 @@ Queue = RedisQueue  # alias
 
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
 
-CLAIM_SCRIPT = b"""
-    local x = redis.call("zrevrange", KEYS[1], 0, 0)
-    if x[1] == nil then
-        return nil
-    else
-        redis.call("zrem", KEYS[1], x[1])
-        return x[1]
-    end
-"""
-CLAIM_SCRIPT_HASH = sha1(CLAIM_SCRIPT).hexdigest()
-
 
 @interface.implementer(IRedisQueue)
 class PriorityQueue(QueueMixin):
@@ -253,7 +224,7 @@ class PriorityQueue(QueueMixin):
         pipe.hset(self._hash, jid, data)
         pipe.execute()
 
-    def __claim(self):
+    def _do_claim(self):
         try:
             jid = self._redis.zrevrange(self._name, 0, 0)[0]
             while self._redis.zrem(self._name, jid) == 0:
@@ -264,15 +235,6 @@ class PriorityQueue(QueueMixin):
         except IndexError:
             # Queue is empty
             pass
-
-    def _do_claim(self):
-        try:
-            result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
-        except NoScriptError:
-            result = self._redis.eval(CLAIM_SCRIPT, 1, self._name)
-        except AttributeError:
-            result = self.__claim()
-        return result
 
     def claim(self, default=None):
         jid = self._do_claim()
