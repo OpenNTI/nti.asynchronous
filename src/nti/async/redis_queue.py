@@ -18,6 +18,8 @@ from datetime import datetime
 
 import transaction
 
+from redis.exceptions import NoScriptError
+
 from zope import interface
 
 from nti.async.interfaces import IJob
@@ -29,11 +31,6 @@ from nti.property.property import alias
 from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
-
-try:
-    from redis.exceptions import NoScriptError
-except ImportError:
-    NoScriptError = Exception
 
 
 class QueueMixin(object):
@@ -123,6 +120,7 @@ LPOP_SCRIPT = b"""
     return redis.call("lpop", KEYS[1])
 """
 LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
+
 
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
