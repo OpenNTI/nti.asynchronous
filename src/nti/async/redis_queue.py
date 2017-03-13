@@ -127,7 +127,7 @@ class RedisQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
                  create_failed_queue=True):
         super(RedisQueue, self).__init__(redis, job_queue_name)
-        if create_failed_queue and False:
+        if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = RedisQueue(redis,
                                       job_queue_name=failed_queue_name,
@@ -221,7 +221,7 @@ class PriorityQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None,
                  failed_queue_name=None, create_failed_queue=True):
         super(PriorityQueue, self).__init__(redis, job_queue_name)
-        if create_failed_queue and False:
+        if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = PriorityQueue(redis,
                                          job_queue_name=failed_queue_name,
