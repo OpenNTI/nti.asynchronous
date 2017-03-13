@@ -13,7 +13,6 @@ from hamcrest import is_in
 from hamcrest import is_not
 from hamcrest import has_length
 from hamcrest import assert_that
-from hamcrest import has_property
 
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
@@ -57,8 +56,6 @@ class TestPriorityQueue(AsyncTestCase):
         aizen = create_job(mock_work, jobid='aizen')
         queue.put(aizen, use_transactions=False)
         assert_that(queue, has_length(2))
-
-        assert_that(queue, has_property('_first', is_('ichigo')))
         assert_that(list(queue), has_length(2))
 
         data = queue.keys()

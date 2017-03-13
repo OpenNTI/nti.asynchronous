@@ -30,6 +30,11 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
+try:
+    from redis.exceptions import NoScriptError
+except ImportError:
+    NoScriptError = Exception
+
 
 class QueueMixin(object):
 
@@ -122,7 +127,7 @@ class RedisQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
                  create_failed_queue=True):
         super(RedisQueue, self).__init__(redis, job_queue_name)
-        if create_failed_queue:
+        if create_failed_queue and False:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = RedisQueue(redis,
                                       job_queue_name=failed_queue_name,
@@ -216,7 +221,7 @@ class PriorityQueue(QueueMixin):
     def __init__(self, redis, job_queue_name=None,
                  failed_queue_name=None, create_failed_queue=True):
         super(PriorityQueue, self).__init__(redis, job_queue_name)
-        if create_failed_queue:
+        if create_failed_queue and False:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = PriorityQueue(redis,
                                          job_queue_name=failed_queue_name,
@@ -233,28 +238,33 @@ class PriorityQueue(QueueMixin):
         pipe.hset(self._hash, jid, data)
         pipe.execute()
 
-    @property
-    def _first(self):
-        return self._redis.zrevrange(self._name, 0, 0)[0]
-
-    def _do_claim(self, default=None):
+    def __claim(self, default=None):
         try:
-            jid = self._first
+            jid = self._redis.zrevrange(self._name, 0, 0)[0]
             while self._redis.zrem(self._name, jid) == 0:
                 # Somebody else also got the same item and removed before us
                 # Try again.
-                jid = self._first
+                jid = self._redis.zrevrange(self._name, 0, 0)[0]
+            return jid
         except IndexError:
             # Queue is empty
             pass
         return default
 
+    def _do_claim(self, default=None):
+        try:
+            result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
+        except NoScriptError:
+            result = self._redis.eval(CLAIM_SCRIPT, 1, self._name)
+        except AttributeError:
+            result = self.__claim(default)
+        return default if result is None else result
+
     def claim(self, default=None):
         jid = self._do_claim(default)
         if jid is default:
             return default
-        # We managed to pop the item from the queue
-        # remove job
+        # We managed to pop the item from the queue. remove job
         data = self._redis.pipeline().hget(self._hash, jid) \
                           .hdel(self._hash, jid).execute()[0]
         job = self._unpickle(data)
