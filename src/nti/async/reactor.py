@@ -121,8 +121,8 @@ class QueuesMixin(object):
 
     @CachedProperty('queue_names')
     def queues(self):
-        queues = [component.getUtility(self.queue_interface, name=x)
-                  for x in self.queue_names]
+        queues = tuple(component.getUtility(self.queue_interface, name=x)
+                       for x in self.queue_names)
         return queues
 
     def add_queues(self, *queues):
