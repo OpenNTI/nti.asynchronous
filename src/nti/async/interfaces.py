@@ -219,3 +219,19 @@ class ReactorStarted(ReactorEvent):
 @interface.implementer(IReactorStopped)
 class ReactorStopped(ReactorEvent):
     pass
+
+
+class IJobEvent(IObjectEvent):
+    job = interface.Attribute("Job")
+
+
+class IJobAbortedEvent(IJobEvent):
+    pass
+
+
+@interface.implementer(IJobAbortedEvent)
+class JobAbortedEvent(ObjectEvent):
+
+    @property
+    def job(self):
+        return self.object

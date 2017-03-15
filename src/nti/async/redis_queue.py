@@ -19,8 +19,11 @@ import transaction
 
 from zope import interface
 
+from zope.event import notify
+
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IRedisQueue
+from nti.async.interfaces import JobAbortedEvent
 
 from nti.property.property import Lazy
 from nti.property.property import alias
@@ -252,6 +255,7 @@ class PriorityQueue(QueueMixin):
                             self._name, job.id)
                 # We do not want to claim any jobs on transaction abort.
                 # Add our job back to the front of the queue.
+                notify(JobAbortedEvent(job))
                 pipe = self._redis.pipeline()
                 self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
         transaction.get().addAfterCommitHook(after_commit_or_abort)
