@@ -256,7 +256,6 @@ class PriorityQueue(QueueMixin):
                 # We do not want to claim any jobs on transaction abort.
                 # Add our job back to the front of the queue.
                 notify(JobAbortedEvent(job))
-                data = self._pickle(job)
                 pipe = self._redis.pipeline()
                 self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
         transaction.get().addAfterCommitHook(after_commit_or_abort)
