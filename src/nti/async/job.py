@@ -27,6 +27,8 @@ from nti.async.interfaces import COMPLETED
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
 
+from nti.async.threadlocal import manager
+
 from nti.externalization.representation import WithRepr
 
 from nti.property.property import alias
@@ -137,6 +139,7 @@ class Job(object):
                               self._callable_name, 
                               effective_args, 
                               effective_kwargs)
+        manager.push({'job':self})
         try:
             self._status_id = ACTIVE_ID
             result = self.callable(*effective_args, **effective_kwargs)
@@ -150,6 +153,7 @@ class Job(object):
             logger.exception("Job (%s) execution failed", self)
         finally:
             self._active_end = datetime.datetime.utcnow()
+            manager.pop() # done w/ job
     __call__ = run
     
     def __eq__(self, other):
