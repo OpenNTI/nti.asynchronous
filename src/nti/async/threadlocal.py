@@ -13,7 +13,7 @@ import threading
 
 
 def defaults():
-    return {'job': None}
+    return {'job': None, 'callable':None}
 
 
 class ThreadLocalManager(threading.local):
@@ -49,3 +49,11 @@ def get_current_job():
     is currently active.
     """
     return manager.get()['job']
+
+
+def get_current_callable():
+    """
+    Return the currently callable or ``None`` if no job
+    is currently active.
+    """
+    return manager.get()['callable']

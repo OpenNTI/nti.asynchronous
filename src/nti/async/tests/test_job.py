@@ -27,6 +27,8 @@ from nti.async.interfaces import IError
 
 from nti.async.job import Job
 
+from nti.async.threadlocal import get_current_job
+
 from nti.async.tests import AsyncTestCase
 
 
@@ -53,6 +55,11 @@ def multiply(first, second, third=None):
     if third is not None:
         res *= third
     return res
+
+
+def current_job():
+    job = get_current_job()
+    assert_that(job, is_not(none()))
 
 
 class TestJob(AsyncTestCase):
@@ -116,3 +123,10 @@ class TestJob(AsyncTestCase):
         assert_that(unpickled.is_new(), is_(True))
         unpickled()
         assert_that(unpickled, has_property('result', is_(15)))
+        
+    def test_current_job(self):
+        assert_that(get_current_job(), is_(none()))
+        job = Job(current_job)
+        job()
+        job = get_current_job()
+        assert_that(job, is_(none()))
