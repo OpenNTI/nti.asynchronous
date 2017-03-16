@@ -125,6 +125,9 @@ class IJob(IAttributeAnnotatable, IContained):
         passing a method is desired, it will typicall need to be wrapped
         in an IJob).""")
 
+    is_side_effect_free = interface.Attribute(
+        """the job does not change the underlying storage""")
+
     def __call__(*args, **kwargs):
         """
         call the callable.  Any given args are effectively appended to

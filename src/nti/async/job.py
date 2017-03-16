@@ -54,12 +54,14 @@ class Job(object):
     __parent__ = None
 
     _id = None
+    _is_side_effect_free = False
     _error = _active_start = _active_end = None
     _status_id = _callable_name = _callable_root = _result = None
 
     error_adapter = IError
 
     id = alias('_id')
+    is_side_effect_free = alias('_is_side_effect_free')
 
     def __init__(self, *args, **kwargs):
         self._status_id = NEW_ID
