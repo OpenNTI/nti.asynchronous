@@ -139,9 +139,10 @@ class Job(object):
                               self._callable_name, 
                               effective_args, 
                               effective_kwargs)
-        manager.push({'job':self, 
+        manager.push({'job': self, 
                       'args': effective_args,
-                      'kwargs':effective_kwargs})
+                      'kwargs': effective_kwargs,
+                      'callable': self.callable})
         try:
             self._status_id = ACTIVE_ID
             result = self.callable(*effective_args, **effective_kwargs)
