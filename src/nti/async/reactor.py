@@ -49,11 +49,12 @@ DEFAULT_MAX_SLEEP_TIME = 60
 class RunnerMixin(object):
 
     site_names = ()
+    current_job = None
+    current_queue = None
 
     trx_sleep = DEFAULT_TRX_SLEEP
     trx_retries = DEFAULT_TRX_RETRIES
 
-    current_queue = None
     max_sleep_time = DEFAULT_MAX_SLEEP_TIME
     max_range_uniform = DEFAULT_MAX_UNIFORM
 
@@ -143,7 +144,7 @@ class QueuesMixin(object):
         registered = []
         for x in queues:
             if      x not in self.queue_names \
-                and component.queryUtility(self.queue_interface, name=x) != None:
+                    and component.queryUtility(self.queue_interface, name=x) != None:
                 registered.append(x)
         self.queue_names.extend(registered)
         return registered
@@ -162,7 +163,6 @@ class QueuesMixin(object):
 class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
 
     processor = None
-    current_job = None
     poll_interval = None
 
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
@@ -183,6 +183,10 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     halt = stop
 
     def _get_job(self):
+        # if current_job is active then it means
+        # we are in a retry from the transaction runner
+        if self.current_job is not None:
+            return self.current_job
         # These are basically priority queues.
         # We should start at the beginning each time.
         job = None
@@ -228,6 +232,9 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         except:
             logger.exception('Cannot execute job.')
             result = not self.exitOnError
+        finally:
+            # XXX: Signal we need to get a new job
+            self.current_queue = self.current_job = None
         return result
     processJob = process_job
 
@@ -256,6 +263,8 @@ class AsyncFailedReactor(AsyncReactor):
     each job once and then return.
     """
 
+    current_jobs = None
+
     def __init__(self, queue_names=(), queue_interface=IQueue,
                  site_names=(), **kwargs):
         RunnerMixin.__init__(self, site_names, **kwargs)
@@ -279,10 +288,17 @@ class AsyncFailedReactor(AsyncReactor):
                 break
 
     def execute_job(self, job=None):
+        # if current jobs has anythig it means we are in a
+        # retry from the transaction manager
+        if self.current_jobs:
+            jobs_to_process = self.current_jobs
+        else:
+            jobs_to_process = list(self)
         count = 0
         # We do all jobs for a queue inside a single (hopefully manageable)
         # transaction.
-        for job in self:
+        for job in jobs_to_process:
+            self.current_job = job
             logger.debug("[%s] Executing job (%s)",
                          self.current_queue, job)
             job.run()
@@ -295,17 +311,22 @@ class AsyncFailedReactor(AsyncReactor):
                 count += 1
             logger.debug("[%s] Job (%s) has been executed",
                          self.current_queue, job.id)
+            self.current_job = None
 
         return count
 
     def process_job(self):
         for queue in self.queues:
-            self.current_queue = queue  # set proper queue
-            count = self.transaction_runner(self.execute_job,
-                                            retries=2,
-                                            sleep=1)
-            logger.info('Finished processing queue [%s] [count=%s]',
-                        queue._name, count)
+            try:
+                self.current_queue = queue  # set proper queue
+                count = self.transaction_runner(self.execute_job,
+                                                retries=2,
+                                                sleep=1)
+                logger.info('Finished processing queue [%s] [count=%s]',
+                            queue._name, count)
+            finally:
+                # XXX: Signal jobs for next que need to be processed
+                self.current_job = self.current_queue = self.current_jobs = None
 
     def run(self):
         self.start()
@@ -335,6 +356,10 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
     current_queue = queue
 
     def execute_job(self):
+        # if current_job is active then it means
+        # we are in a retry from the transaction runner
+        if self.current_job is not None:
+            return self.current_job
         job = self.queue.claim()
         if job is not None:
             return self.perform_job(job, self.queue)
@@ -372,6 +397,9 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                                      self.queue, e)
                     except:
                         logger.exception('Cannot execute job.')
+                    finally:
+                        # XXX: Signal we need to get a new job
+                        self.current_job = None
                 except KeyboardInterrupt:
                     break
         finally:
