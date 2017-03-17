@@ -168,13 +168,9 @@ class RedisQueue(QueueMixin):
         # make sure we put the job back if the transaction fails
         def after_commit_or_abort(success=False):
             if not success and not job.is_side_effect_free:
-                logger.warn("Pushing job back onto queue on abort [%s] (%s)",
+                logger.warn("Transaction abort for [%s] (%s)",
                             self._name, job.id)
-                # We do not want to claim any jobs on transaction abort.
-                # Add our job back to the front of the queue.
                 notify(JobAbortedEvent(job))
-                pipe = self._redis.pipeline()
-                self._put_job(pipe, data, tail=False, jid=job.id)
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job
 
@@ -252,13 +248,9 @@ class PriorityQueue(QueueMixin):
         # make sure we put the job back if the transaction fails
         def after_commit_or_abort(success=False):
             if not success and not job.is_side_effect_free:
-                logger.warn("Pushing job back onto queue on abort [%s] (%s)",
+                logger.warn("Transaction abort for [%s] (%s)",
                             self._name, job.id)
-                # We do not want to claim any jobs on transaction abort.
-                # Add our job back to the front of the queue.
                 notify(JobAbortedEvent(job))
-                pipe = self._redis.pipeline()
-                self._put_job(pipe, data, score=MAX_TIMESTAMP, jid=jid)
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job
 
