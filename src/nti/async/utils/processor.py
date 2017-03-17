@@ -91,12 +91,12 @@ class Processor(object):
                                 default=DEFAULT_MAX_SLEEP_TIME, 
                                 dest='max_sleep_time', 
                                 type=int)
-        arg_parser.add_argument('--max_trx_sleep', 
+        arg_parser.add_argument('--trx_sleep', 
                                 help="Transaction sleep",
                                 default=DEFAULT_TRX_SLEEP, 
                                 dest='trx_sleep', 
                                 type=int)
-        arg_parser.add_argument('--max_trx_retries',
+        arg_parser.add_argument('--trx_retries',
                                 help="Max number of transaction retries",
                                 default=DEFAULT_TRX_RETRIES, 
                                 dest='trx_retries', 
@@ -172,17 +172,17 @@ class Processor(object):
         max_sleep_time = getattr(args, 'max_sleep_time')
         max_range_uniform = getattr(args, 'max_range_uniform')
         
-        trx_sleep = getattr(args, 'max_trx_sleep')
-        trx_retries = getattr(args, 'max_trx_retries')
+        trx_sleep = getattr(args, 'trx_sleep')
+        trx_retries = getattr(args, 'trx_retries')
 
         kwargs = {
             'site_names': site_names,
             'trx_sleep': trx_sleep,
             'trx_retries': trx_retries, 
             'queue_names': queue_names,
+            'queue_interface': queue_interface,
             'max_sleep_time': max_sleep_time,
             'max_range_uniform': max_range_uniform,
-            'queue_interface': queue_interface,
         }
 
         if failed_jobs:
