@@ -24,6 +24,8 @@ from nti.async.interfaces import IQueue
 from nti.async.interfaces import IRedisQueue
 from nti.async.interfaces import IAsyncReactor
 
+from nti.async.reactor import DEFAULT_TRX_SLEEP
+from nti.async.reactor import DEFAULT_TRX_RETRIES
 from nti.async.reactor import DEFAULT_MAX_UNIFORM
 from nti.async.reactor import DEFAULT_MAX_SLEEP_TIME
 
@@ -79,10 +81,26 @@ class Processor(object):
                                 action='store_true', dest='redis')
         arg_parser.add_argument('--priority', help="Priority redis queue",
                                 action='store_true', dest='priority')
-        arg_parser.add_argument('-r', '--max_range_uniform', help="Max sleep range tic when no jobs",
-                                default=DEFAULT_MAX_UNIFORM, dest='max_range_uniform', type=int)
-        arg_parser.add_argument('-s', '--max_sleep_time', help="Max sleep time when no jobs",
-                                default=DEFAULT_MAX_SLEEP_TIME, dest='max_sleep_time', type=int)
+        arg_parser.add_argument('-r', '--max_range_uniform', 
+                                help="Max sleep range tic when no jobs",
+                                default=DEFAULT_MAX_UNIFORM, 
+                                dest='max_range_uniform', 
+                                type=int)
+        arg_parser.add_argument('-s', '--max_sleep_time',
+                                help="Max sleep time when no jobs",
+                                default=DEFAULT_MAX_SLEEP_TIME, 
+                                dest='max_sleep_time', 
+                                type=int)
+        arg_parser.add_argument('--max_trx_sleep', 
+                                help="Transaction sleep",
+                                default=DEFAULT_TRX_SLEEP, 
+                                dest='trx_sleep', 
+                                type=int)
+        arg_parser.add_argument('--max_trx_retries',
+                                help="Max number of transaction retries",
+                                default=DEFAULT_TRX_RETRIES, 
+                                dest='trx_retries', 
+                                type=int)
         arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
                                 action='store_true', dest='threaded')
         arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
@@ -153,12 +171,19 @@ class Processor(object):
 
         max_sleep_time = getattr(args, 'max_sleep_time')
         max_range_uniform = getattr(args, 'max_range_uniform')
+        
+        trx_sleep = getattr(args, 'max_trx_sleep')
+        trx_retries = getattr(args, 'max_trx_retries')
 
-        kwargs = {'queue_names': queue_names,
-                  'site_names': site_names,
-                  'max_sleep_time': max_sleep_time,
-                  'max_range_uniform': max_range_uniform,
-                  'queue_interface': queue_interface}
+        kwargs = {
+            'site_names': site_names,
+            'trx_sleep': trx_sleep,
+            'trx_retries': trx_retries, 
+            'queue_names': queue_names,
+            'max_sleep_time': max_sleep_time,
+            'max_range_uniform': max_range_uniform,
+            'queue_interface': queue_interface,
+        }
 
         if failed_jobs:
             target = AsyncFailedReactor(**kwargs)

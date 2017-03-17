@@ -39,15 +39,19 @@ from nti.site.interfaces import ISiteTransactionRunner
 from nti.zodb.interfaces import UnableToAcquireCommitLock
 from nti.zodb.interfaces import ZODBUnableToAcquireCommitLock
 
+DEFAULT_TRX_SLEEP = 1
+DEFAULT_TRX_RETRIES = 3
+
 DEFAULT_MAX_UNIFORM = 5
 DEFAULT_MAX_SLEEP_TIME = 60
 
 
 class RunnerMixin(object):
 
-    trx_sleep = 1
-    trx_retries = 2
     site_names = ()
+
+    trx_sleep = DEFAULT_TRX_SLEEP
+    trx_retries = DEFAULT_TRX_RETRIES
 
     current_queue = None
     max_sleep_time = DEFAULT_MAX_SLEEP_TIME
@@ -55,9 +59,19 @@ class RunnerMixin(object):
 
     def __init__(self, site_names=(),
                  max_sleep_time=None,
-                 max_range_uniform=None):
+                 max_range_uniform=None,
+                 trx_sleep=None,
+                 trx_retries=None):
         self.generator = random.Random()
         self.site_names = site_names or ()
+        # check db transaction runner params
+        if trx_sleep is not None:
+            self.trx_sleep = trx_sleep
+        if trx_retries is not None:
+            self.trx_retries = trx_retries
+        assert self.trx_retries > 0
+        assert self.trx_retries > 0
+        # check reactor params
         if max_sleep_time is not None:
             self.max_sleep_time = max_sleep_time
         if max_range_uniform is not None:
