@@ -9,9 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-import nti.monkey.patch_relstorage_all_on_import
-nti.monkey.patch_relstorage_all_on_import.patch()
-
 import os
 import sys
 import time
