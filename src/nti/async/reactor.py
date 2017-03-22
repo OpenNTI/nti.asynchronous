@@ -132,19 +132,19 @@ class QueuesMixin(object):
 
     def __init__(self, queue_names=(), queue_interface=IQueue):
         self.queue_interface = queue_interface
-        self.queue_names = list(set(queue_names or ()))
+        self.queue_names = list(queue_names or ())
 
     @CachedProperty('queue_names')
     def queues(self):
         queues = tuple(component.getUtility(self.queue_interface, name=x)
-                       for x in self.queue_names)
+                       for x in set(self.queue_names))
         return queues
 
     def add_queues(self, *queues):
         registered = []
         for x in queues:
             if      x not in self.queue_names \
-                    and component.queryUtility(self.queue_interface, name=x) != None:
+                and component.queryUtility(self.queue_interface, name=x) != None:
                 registered.append(x)
         self.queue_names.extend(registered)
         return registered
@@ -273,7 +273,7 @@ class AsyncFailedReactor(AsyncReactor):
     @CachedProperty('queue_names')
     def queues(self):
         queues = [component.getUtility(self.queue_interface, name=x).get_failed_queue()
-                  for x in self.queue_names]
+                  for x in set(self.queue_names)]
         return queues
 
     def __iter__(self):
@@ -320,7 +320,7 @@ class AsyncFailedReactor(AsyncReactor):
             try:
                 self.current_queue = queue  # set proper queue
                 count = self.transaction_runner(self.execute_job,
-                                                retries=2,
+                                                retries=3,
                                                 sleep=1)
                 logger.info('Finished processing queue [%s] [count=%s]',
                             queue._name, count)
@@ -332,11 +332,12 @@ class AsyncFailedReactor(AsyncReactor):
         self.start()
         try:
             logger.info('Starting reactor for failed jobs in queues=(%s)',
-                        self.queue_names)
+                        set(self.queue_names))
             self.process_job()
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queues=(%s)', self.queue_names)
+            logger.warn('Exiting reactor. queues=(%s)', 
+                        set(self.queue_names))
             self.processor = None
     __call__ = run
 
@@ -415,7 +416,6 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                  site_names=(), poll_interval=3, **kwargs):
         RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
-        self.poll_interval = poll_interval
 
     def start(self):
         super(ThreadedReactor, self).start()
@@ -431,13 +431,15 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         threads = []
         try:
             logger.info('Starting threaded reactor queues=(%s)',
-                        self.queue_names)
-            # create processes
+                        set(self.queue_names))
+            # create threads
             for name in self.queue_names:
                 target = SingleQueueReactor(name,
                                             self.queue_interface,
                                             self.site_names,
                                             self.poll_interval,
+                                            trx_sleep=self.trx_sleep,
+                                            trx_retries=self.trx_retries,
                                             max_sleep_time=self.max_sleep_time,
                                             max_range_uniform=self.max_range_uniform)
                 target.__parent__ = self
@@ -453,7 +455,8 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                     break
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queue=(%s)', self.queue_names)
+            logger.warn('Exiting reactor. queue=(%s)', 
+                        set(self.queue_names))
     __call__ = run
 
 # Reduce verbosity of activity logger
