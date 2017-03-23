@@ -84,7 +84,7 @@ class RunnerMixin(object):
         return self.generator.uniform(1, self.max_range_uniform)
 
     def perform_job(self, job, queue=None):
-        queue = queue or self.current_queue
+        queue = self.current_queue if queue is None else queue
         logger.debug("[%s] Executing job (%s)", queue, job)
         job.run()
         if job.has_failed():
@@ -416,6 +416,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                  site_names=(), poll_interval=3, **kwargs):
         RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
+        self.poll_interval = poll_interval
 
     def start(self):
         super(ThreadedReactor, self).start()
