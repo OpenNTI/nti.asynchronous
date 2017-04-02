@@ -209,9 +209,9 @@ class PriorityQueue(QueueMixin):
         super(PriorityQueue, self).__init__(redis, job_queue_name)
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
-            self._failed = PriorityQueue(redis,
-                                         job_queue_name=failed_queue_name,
-                                         create_failed_queue=False)
+            self._failed = RedisQueue(redis,
+                                      job_queue_name=failed_queue_name,
+                                      create_failed_queue=False)
 
     def _put_job(self, pipe, data, tail=True, jid=None, score=None):
         assert jid, 'must provide a job id'
