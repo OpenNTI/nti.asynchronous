@@ -68,19 +68,36 @@ class Processor(object):
     def add_arg_parser_arguments(self, arg_parser):
         arg_parser.add_argument('-v', '--verbose', help="Be verbose",
                                 action='store_true', dest='verbose')
+
+        # config context
         arg_parser.add_argument('-l', '--library', help="Load library packages",
                                 action='store_true', dest='library')
+        arg_parser.add_argument('--slugs',
+                                help="Load context slugs",
+                                dest='slugs', 
+                                action='store_true')
+        
+        # reactor queues
         arg_parser.add_argument('-n', '--name', help="Queue name",
                                 default=u'', dest='name')
-        arg_parser.add_argument('-o', '--queue_names', help="Queue names",
+        arg_parser.add_argument('-q', '--queue_names', help="Queue names",
                                 default='', dest='queue_names')
-        arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
-                                default=True, dest='exit_error', action='store_false')
-        arg_parser.add_argument('--site', dest='site', help="Application SITE")
+
+        # reactor settings
         arg_parser.add_argument('--redis', help="Use redis queues",
                                 action='store_true', dest='redis')
+        arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
+                                action='store_true', dest='failed_jobs')
+
+        # reactor type redis type
+        arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
+                                action='store_true', dest='threaded')
         arg_parser.add_argument('--priority', help="Priority redis queue",
-                                action='store_true', dest='priority')
+                                action='store_true', dest='priority')      
+        
+        # reactor loop settings
+        arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
+                                default=True, dest='exit_error', action='store_false')
         arg_parser.add_argument('-r', '--max_range_uniform', 
                                 help="Max sleep range tic when no jobs",
                                 default=DEFAULT_MAX_UNIFORM, 
@@ -91,6 +108,8 @@ class Processor(object):
                                 default=DEFAULT_MAX_SLEEP_TIME, 
                                 dest='max_sleep_time', 
                                 type=int)
+        
+        # transaction runner
         arg_parser.add_argument('--trx_sleep', 
                                 help="Transaction sleep",
                                 default=DEFAULT_TRX_SLEEP, 
@@ -101,10 +120,7 @@ class Processor(object):
                                 default=DEFAULT_TRX_RETRIES, 
                                 dest='trx_retries', 
                                 type=int)
-        arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
-                                action='store_true', dest='threaded')
-        arg_parser.add_argument('--failed_jobs', help="Process failed jobs",
-                                action='store_true', dest='failed_jobs')
+        arg_parser.add_argument('--site', dest='site', help="Application SITE")
         return arg_parser
 
     def create_arg_parser(self):
@@ -190,8 +206,7 @@ class Processor(object):
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
         elif not threaded:
-            target = AsyncReactor(exitOnError=exit_on_error,
-                                  **kwargs)
+            target = AsyncReactor(exitOnError=exit_on_error, **kwargs)
             component.globalSiteManager.registerUtility(target, IAsyncReactor)
             result = target()
         else:
@@ -203,8 +218,12 @@ class Processor(object):
     def extend_context(self, context):
         pass
 
-    def create_context(self, env_dir, args=None):
-        context = create_context(env_dir, with_library=True)
+    def create_context(self, env_dir, args):
+        slugs = getattr(args, 'slugs', False)
+        context = create_context(env_dir, 
+                                 slugs=slugs,
+                                 plugins=slugs,
+                                 with_library=True)
         self.extend_context(context)
         return context
 
