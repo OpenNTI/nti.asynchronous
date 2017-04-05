@@ -90,8 +90,8 @@ class RunnerMixin(object):
         if job.has_failed():
             logger.error("[%s] Job %s failed", queue, job.id)
             queue.put_failed(job)
-        logger.debug("[%s] Job %s has been executed",
-                     queue, job.id)
+        logger.info("[%s] Job %s has been executed (%s).",
+                     queue, job.id, job.status)
         return True
 
     @Lazy
