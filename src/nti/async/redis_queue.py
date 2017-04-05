@@ -165,7 +165,7 @@ class RedisQueue(QueueMixin):
         self._redis.hdel(self._hash, job.id)  # unset
         logger.debug("Job (%s) claimed", job.id)
 
-        # make sure we put the job back if the transaction fails
+        # notify if the transaction aborts
         def after_commit_or_abort(success=False):
             if not success and not job.is_side_effect_free:
                 logger.warn("Transaction abort for [%s] (%s)",
