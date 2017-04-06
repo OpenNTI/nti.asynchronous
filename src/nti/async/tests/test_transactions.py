@@ -70,7 +70,7 @@ class TestJobs(AsyncTestCase):
         def _fail():
             raise Exception()
 
-        # Job that fails during commit
+        # Job that fails during commit are not put back in the queue
         try:
             with mock_dataserver.mock_db_trans(self.ds):
                 claimed = queue.claim()
@@ -84,4 +84,4 @@ class TestJobs(AsyncTestCase):
             pass
 
         # Job failed and is back on queue
-        assert_that(queue, has_length(1))
+        assert_that(queue, has_length(0))
