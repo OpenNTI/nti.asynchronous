@@ -47,23 +47,27 @@ class TestReactor(AsyncTestCase):
         q1 = Queue()
         q2 = Queue()
         q3 = Queue()
-        job1 = q3.put(create_job(operator.mul, (7, 6)))
-        job2 = q3.put(create_job(operator.mul, (14, 3)))
+
+        job1 = q3.put(create_job(operator.mul, (7, 6), jobid="1"))
+        job2 = q3.put(create_job(operator.mul, (14, 3), jobid="2"))
         self.reactor.queues = [q1, q2, q3]
 
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job1))
 
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job2))
+
         val = self.reactor.perform_job(job)
         assert_that(val, is_(True))
         assert_that(job.has_failed(), is_(False))
         assert_that(job.is_running(), is_(False))
         assert_that(job.has_completed(), is_(True))
         
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, none())
 
@@ -83,29 +87,35 @@ class TestReactor(AsyncTestCase):
         job3 = q1.put(create_job(operator.mul, (7, 6)))
         job4 = q2.put(create_job(operator.mul, (14, 3)))
 
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job3))
 
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job4))
 
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job2))
 
         # Empty again
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, none())
 
         # And again
+        self.reactor.current_job = None
         job5 = q3.put(create_job(operator.mul, (7, 6)))
         job6 = q1.put(create_job(operator.mul, (14, 3)))
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job6))
 
+        self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job5))
