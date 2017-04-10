@@ -13,7 +13,15 @@ import time
 import zlib
 import pickle
 from io import BytesIO
+from hashlib import sha1
 from datetime import datetime
+
+try:
+    from redis import StrictRedis
+    from redis.exceptions import NoScriptError
+except ImportError:
+    StrictRedis = object
+    NoScriptError = Exception
 
 import transaction
 
@@ -116,6 +124,18 @@ class QueueMixin(object):
         return bool(len(self))
 
 
+TAIL_PUT_SCRIPT = b"""
+    redis.call("rpush", KEYS[1], ARGV[1])
+    redis.call("hset", KEYS[2], ARGV[2], '1')
+"""
+TAIL_PUT_SCRIPT_HASH = sha1(TAIL_PUT_SCRIPT).hexdigest()
+
+HEAD_PUT_SCRIPT = b"""
+    redis.call("lpush", KEYS[1], ARGV[1])
+    redis.call("hset", KEYS[2], ARGV[2], '1')
+"""
+HEAD_PUT_SCRIPT_HASH = sha1(HEAD_PUT_SCRIPT).hexdigest()
+
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -131,13 +151,22 @@ class RedisQueue(QueueMixin):
                                       create_failed_queue=False)
 
     def _put_job(self, pipe, data, tail=True, jid=None):
-        if tail:
-            pipe.rpush(self._name, data)
+        if StrictRedis is not object:
+            script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
+            hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
+            try:
+                self._redis.evalsha(hash_script, 2, self._name, self._hash, data, jid)
+            except NoScriptError:
+                logger.warn("script not cached.")
+                self._redis.eval(script, 2, self._name, self._hash, data, jid)
         else:
-            pipe.lpush(self._name, data)
-        if jid is not None:
-            pipe.hset(self._hash, jid, '1')
-        pipe.execute()
+            if tail:
+                pipe.rpush(self._name, data)
+            else:
+                pipe.lpush(self._name, data)
+            if jid is not None:
+                pipe.hset(self._hash, jid, '1')
+            pipe.execute()
 
     def all(self, unpickle=True):
         data = self._redis.lrange(self._name, 0, -1)
@@ -199,7 +228,6 @@ Queue = RedisQueue  # alias
 
 
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
-
 
 @interface.implementer(IRedisQueue)
 class PriorityQueue(QueueMixin):
