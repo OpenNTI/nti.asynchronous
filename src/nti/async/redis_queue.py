@@ -16,12 +16,7 @@ from io import BytesIO
 from hashlib import sha1
 from datetime import datetime
 
-try:
-    from redis import StrictRedis
-    from redis.exceptions import NoScriptError
-except ImportError:
-    StrictRedis = object
-    NoScriptError = Exception
+from redis.exceptions import NoScriptError
 
 import transaction
 
@@ -151,15 +146,14 @@ class RedisQueue(QueueMixin):
                                       create_failed_queue=False)
 
     def _put_job(self, pipe, data, tail=True, jid=None):
-        if StrictRedis is not object:
+        try:
             script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
             hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
-            try:
-                self._redis.evalsha(hash_script, 2, self._name, self._hash, data, jid)
-            except NoScriptError:
-                logger.warn("script not cached.")
-                self._redis.eval(script, 2, self._name, self._hash, data, jid)
-        else:
+            self._redis.evalsha(hash_script, 2, self._name, self._hash, data, jid)
+        except NoScriptError:
+            logger.warn("script not cached.")
+            self._redis.eval(script, 2, self._name, self._hash, data, jid)
+        except AttributeError:
             if tail:
                 pipe.rpush(self._name, data)
             else:
