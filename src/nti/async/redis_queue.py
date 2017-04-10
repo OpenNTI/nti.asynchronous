@@ -139,6 +139,11 @@ HEAD_PUT_SCRIPT = b"""
 """
 HEAD_PUT_SCRIPT_HASH = sha1(HEAD_PUT_SCRIPT).hexdigest()
 
+LPOP_SCRIPT = b"""
+    return redis.call("lpop", KEYS[1])
+"""
+LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
+
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -184,7 +189,13 @@ class RedisQueue(QueueMixin):
         raise NotImplementedError()
 
     def _do_claim(self):
-        return self._redis.lpop(self._name)
+        try:
+            result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
+        except NoScriptError:
+            result = self._redis.eval(LPOP_SCRIPT, 1, self._name)
+        except AttributeError:
+            result = self._redis.lpop(self._name)
+        return result
 
     def claim(self, default=None):
         # once we get the job from redis, it's remove from it
@@ -228,6 +239,17 @@ class RedisQueue(QueueMixin):
         raise NotImplementedError()
 Queue = RedisQueue  # alias
 
+
+CLAIM_SCRIPT = b"""
+    local x = redis.call("zrevrange", KEYS[1], 0, 0)
+    if x[1] == nil then
+        return nil
+    else
+        redis.call("zrem", KEYS[1], x[1])
+        return x[1]
+    end
+"""
+CLAIM_SCRIPT_HASH = sha1(CLAIM_SCRIPT).hexdigest()
 
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
 
