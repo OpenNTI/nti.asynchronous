@@ -35,6 +35,7 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
+LONG_PUSH_DURATION_IN_SECS = 5
 
 class QueueMixin(object):
 
@@ -58,7 +59,14 @@ class QueueMixin(object):
         result = zlib.compress(bio.read())
         return result
 
-    def _put_job(self, pipe, data, tail=True, jid=None):
+    def _put_job(self, *args, **kwargs):
+        t0 = time.time()
+        self._do_put_job(*args, **kwargs)
+        duration = time.time() - t0
+        if duration > LONG_PUSH_DURATION_IN_SECS:
+            logger.warn("Slow running redis push (%ss)", duration)
+
+    def _do_put_job(self, pipe, data, tail=True, jid=None):
         raise NotImplementedError()
 
     def put(self, item, use_transactions=True, tail=True):
@@ -145,7 +153,7 @@ class RedisQueue(QueueMixin):
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
 
-    def _put_job(self, pipe, data, tail=True, jid=None):
+    def _do_put_job(self, pipe, data, tail=True, jid=None):
         try:
             script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
             hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
@@ -235,7 +243,7 @@ class PriorityQueue(QueueMixin):
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
 
-    def _put_job(self, pipe, data, tail=True, jid=None, score=None):
+    def _do_put_job(self, pipe, data, tail=True, jid=None, score=None):
         assert jid, 'must provide a job id'
         if score is None:
             if tail:
