@@ -35,6 +35,7 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
+USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
 
 class QueueMixin(object):
@@ -158,7 +159,7 @@ class RedisQueue(QueueMixin):
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
 
-    def _do_put_job(self, pipe, data, tail=True, jid=None):
+    def _do_put_job_lua(self, data, tail, jid):
         try:
             script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
             hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
@@ -166,14 +167,24 @@ class RedisQueue(QueueMixin):
         except NoScriptError:
             logger.warn("script not cached.")
             self._redis.eval(script, 2, self._name, self._hash, data, jid)
-        except AttributeError:
-            if tail:
-                pipe.rpush(self._name, data)
-            else:
-                pipe.lpush(self._name, data)
-            if jid is not None:
-                pipe.hset(self._hash, jid, '1')
-            pipe.execute()
+
+    def _do_put_job_pipe(self, pipe, data, tail, jid):
+        if tail:
+            pipe.rpush(self._name, data)
+        else:
+            pipe.lpush(self._name, data)
+        if jid is not None:
+            pipe.hset(self._hash, jid, '1')
+        pipe.execute()
+
+    def _do_put_job(self, pipe, data, tail=True, jid=None):
+        if USE_LUA:
+            try:
+                self._do_put_job_lua(data, tail, jid)
+            except AttributeError:
+                self._do_put_job_pipe(pipe, data, tail, jid)
+        else:
+            self._do_put_job_pipe(pipe, data, tail, jid)
 
     def all(self, unpickle=True):
         data = self._redis.lrange(self._name, 0, -1)
@@ -188,14 +199,25 @@ class RedisQueue(QueueMixin):
         # jobs are pickled
         raise NotImplementedError()
 
-    def _do_claim(self):
+    def _do_claim_lua(self):
         try:
             result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
         except NoScriptError:
             result = self._redis.eval(LPOP_SCRIPT, 1, self._name)
-        except AttributeError:
-            result = self._redis.lpop(self._name)
         return result
+
+    def _do_claim_client(self):
+        result = self._redis.lpop(self._name)
+        return result
+
+    def _do_claim(self):
+        if USE_LUA:
+            try:
+                return self._do_claim_lua()
+            except AttributeError:
+                return self._do_claim_client()
+        else:
+            return self._do_claim_client()
 
     def claim(self, default=None):
         # once we get the job from redis, it's remove from it
