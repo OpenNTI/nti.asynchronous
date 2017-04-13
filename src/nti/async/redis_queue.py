@@ -298,7 +298,14 @@ class PriorityQueue(QueueMixin):
         pipe.hset(self._hash, jid, data)
         pipe.execute()
 
-    def _do_claim(self):
+    def _do_claim_lua(self):
+        try:
+            result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
+        except NoScriptError:
+            result = self._redis.eval(CLAIM_SCRIPT, 1, self._name)
+        return result
+
+    def _do_claim_client(self):
         try:
             jid = self._redis.zrevrange(self._name, 0, 0)[0]
             while self._redis.zrem(self._name, jid) == 0:
@@ -309,6 +316,15 @@ class PriorityQueue(QueueMixin):
         except IndexError:
             # Queue is empty
             pass
+
+    def _do_claim(self):
+        if USE_LUA:
+            try:
+                return self._do_claim_lua()
+            except AttributeError:
+                return self._do_claim_client()
+        else:
+            return self._do_claim_client()
 
     def claim(self, default=None):
         jid = self._do_claim()
