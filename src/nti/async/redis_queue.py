@@ -38,7 +38,8 @@ DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
 
-#XXX: Temporary to make sure we push onto the redis queue
+
+# XXX: Temporary to make sure we push onto the redis queue
 # *after* committing to the database.
 class ExecuteLastObjectDataManager(transactions.ObjectDataManager):
     """
@@ -51,6 +52,7 @@ class ExecuteLastObjectDataManager(transactions.ObjectDataManager):
         parent_key = super(ExecuteLastObjectDataManager, self).sortKey()
         sort_str = str(self.target) if self.target is not None else str(self.callable)
         return 'zzz%s:%s' % (sort_str, parent_key)
+
 
 class QueueMixin(object):
 
@@ -160,6 +162,7 @@ LPOP_SCRIPT = b"""
 """
 LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
 
+
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -178,7 +181,8 @@ class RedisQueue(QueueMixin):
         try:
             script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
             hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
-            self._redis.evalsha(hash_script, 2, self._name, self._hash, data, jid)
+            self._redis.evalsha(hash_script, 2, self._name,
+                                self._hash, data, jid)
         except NoScriptError:
             logger.warn("script not cached.")
             self._redis.eval(script, 2, self._name, self._hash, data, jid)
@@ -289,6 +293,7 @@ CLAIM_SCRIPT = b"""
 CLAIM_SCRIPT_HASH = sha1(CLAIM_SCRIPT).hexdigest()
 
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
+
 
 @interface.implementer(IRedisQueue)
 class PriorityQueue(QueueMixin):
