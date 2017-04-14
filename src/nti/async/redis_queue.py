@@ -38,6 +38,20 @@ DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
 
+#XXX: Temporary to make sure we push onto the redis queue
+# *after* committing to the database.
+class ExecuteLastObjectDataManager(transactions.ObjectDataManager):
+    """
+    A special extension of :class:`ObjectDataManager` that
+    attempts to execute after all other data managers have
+    executed.
+    """
+
+    def sortKey(self):
+        parent_key = super(ExecuteLastObjectDataManager, self).sortKey()
+        sort_str = str(self.target or self.callable)
+        return 'zzz%s:%s' % (sort_str, parent_key)
+
 class QueueMixin(object):
 
     __parent__ = None
@@ -77,9 +91,10 @@ class QueueMixin(object):
         logger.debug('Placing job (%s) in [%s]', item.id, self._name)
         if use_transactions:
             # Only place the job once the transaction has been committed.
-            transactions.do(target=self,
-                            call=self._put_job,
-                            args=(pipe, data, tail, item.id))
+            data_manager = ExecuteLastObjectDataManager(target=self,
+                                                        call=self._put_job,
+                                                        args=(pipe, data, tail, item.id))
+            transaction.get().join(data_manager)
         else:
             self._put_job(pipe, data, tail, item.id)
         return item
