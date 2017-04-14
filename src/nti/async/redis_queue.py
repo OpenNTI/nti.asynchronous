@@ -132,7 +132,7 @@ class QueueMixin(object):
         return result or ()
 
     def __len__(self):
-        result = self._redis.llen(self._hash)
+        result = self._redis.hlen(self._hash)
         return result or 0
 
     def __contains__(self, key):
