@@ -49,7 +49,7 @@ class ExecuteLastObjectDataManager(transactions.ObjectDataManager):
 
     def sortKey(self):
         parent_key = super(ExecuteLastObjectDataManager, self).sortKey()
-        sort_str = str(self.target or self.callable)
+        sort_str = str(self.target) if self.target is not None else str(self.callable)
         return 'zzz%s:%s' % (sort_str, parent_key)
 
 class QueueMixin(object):
