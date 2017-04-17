@@ -39,21 +39,6 @@ USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
 
 
-# XXX: Temporary to make sure we push onto the redis queue
-# *after* committing to the database.
-class ExecuteLastObjectDataManager(transactions.ObjectDataManager):
-    """
-    A special extension of :class:`ObjectDataManager` that
-    attempts to execute after all other data managers have
-    executed.
-    """
-
-    def sortKey(self):
-        parent_key = super(ExecuteLastObjectDataManager, self).sortKey()
-        sort_str = str(self.target) if self.target is not None else str(self.callable)
-        return 'zzz%s:%s' % (sort_str, parent_key)
-
-
 class QueueMixin(object):
 
     __parent__ = None
@@ -92,11 +77,11 @@ class QueueMixin(object):
         pipe = self._redis.pipeline()
         logger.debug('Placing job (%s) in [%s]', item.id, self._name)
         if use_transactions:
-            # Only place the job once the transaction has been committed.
-            data_manager = ExecuteLastObjectDataManager(target=self,
-                                                        call=self._put_job,
-                                                        args=(pipe, data, tail, item.id))
-            transaction.get().join(data_manager)
+            # We must attempt to execute after the rest of the transaction in
+            # case our job is picked up before the database state is updated.
+            transactions.do_near_end(target=self,
+                                     call=self._put_job,
+                                     args=(pipe, data, tail, item.id))
         else:
             self._put_job(pipe, data, tail, item.id)
         return item
