@@ -20,6 +20,9 @@ import gevent
 from zope import component
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+from zope.cachedescriptors.property import CachedProperty
+
 from zope.component import ComponentLookupError
 
 from zope.event import notify
@@ -30,9 +33,6 @@ from nti.async.interfaces import IQueue
 from nti.async.interfaces import IAsyncReactor
 from nti.async.interfaces import ReactorStarted
 from nti.async.interfaces import ReactorStopped
-
-from nti.property.property import Lazy
-from nti.property.property import CachedProperty
 
 from nti.site.interfaces import ISiteTransactionRunner
 

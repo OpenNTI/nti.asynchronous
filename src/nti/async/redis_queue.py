@@ -22,13 +22,14 @@ import transaction
 
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+
 from zope.event import notify
 
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IRedisQueue
 from nti.async.interfaces import JobAbortedEvent
 
-from nti.property.property import Lazy
 from nti.property.property import alias
 
 from nti.transactions import transactions
