@@ -53,7 +53,6 @@ setup(
         'gevent',
         'persistent',
         'transaction',
-        'zc.blist',
         'zc.queue',
         'ZODB',
         'zope.annotation',

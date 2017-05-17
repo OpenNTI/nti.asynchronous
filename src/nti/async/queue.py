@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -13,13 +13,13 @@ from zope import interface
 
 from zope.location.interfaces import IContained
 
-from zc.blist import BList
-
 from zc.queue import CompositeQueue
 
 import BTrees
 
 from persistent import Persistent
+
+from persistent.list import PersistentList
 
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IQueue
@@ -30,7 +30,7 @@ class Queue(Persistent):
 
     __name__ = None
     __parent__ = None
-    
+
     family = BTrees.family64
 
     _queue = _length = _failed_jobs = None
@@ -132,7 +132,7 @@ class Queue(Persistent):
 
     def put_failed(self, item):
         if self._failed_jobs is None:
-            self._failed_jobs = BList()
+            self._failed_jobs = PersistentList()
         item = IJob(item)
         self._failed_jobs.append(item)
     putFailed = put_failed
