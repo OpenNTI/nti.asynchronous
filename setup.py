@@ -1,8 +1,6 @@
 import codecs
 from setuptools import setup, find_packages
 
-VERSION = '0.0.0'
-
 entry_points = {
     'z3c.autoinclude.plugin': [
         'target = nti.dataserver',
@@ -15,15 +13,21 @@ TESTS_REQUIRE = [
     'zope.testrunner',
 ]
 
+
+def _read(fname):
+    with codecs.open(fname, encoding='utf-8') as f:
+        return f.read()
+
+
 setup(
     name='nti.async',
-    version=VERSION,
+    version=_read('version.txt').strip(),
     author='Jason Madden',
     author_email='jason@nextthought.com',
     description="NTI Async",
-    long_description=codecs.open('README.rst', encoding='utf-8').read(),
+    long_description=(_read('README.rst') + '\n\n' + _read('CHANGES.rst')),
     license='Apache',
-    keywords='Queue Reactor',
+    keywords='Queue reactor',
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
@@ -35,9 +39,12 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
+    zip_safe=True,
     packages=find_packages('src'),
     package_dir={'': 'src'},
+    include_package_data=True,
     namespace_packages=['nti'],
+    tests_require=TESTS_REQUIRE,
     install_requires=[
         'setuptools',
         'nti.property',
@@ -61,5 +68,6 @@ setup(
     extras_require={
         'test': TESTS_REQUIRE,
     },
-    entry_points=entry_points
+    entry_points=entry_points,
+    test_suite="nti.async.tests",
 )
