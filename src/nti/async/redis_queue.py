@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -34,7 +34,7 @@ from nti.property.property import alias
 
 from nti.transactions import transactions
 
-DEFAULT_QUEUE_NAME = 'nti/async/jobs'
+DEFAULT_QUEUE_NAME = u'nti/async/jobs'
 
 USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
@@ -131,19 +131,19 @@ class QueueMixin(object):
         return bool(len(self))
 
 
-TAIL_PUT_SCRIPT = b"""
+TAIL_PUT_SCRIPT = """
     redis.call("rpush", KEYS[1], ARGV[1])
     redis.call("hset", KEYS[2], ARGV[2], '1')
 """
 TAIL_PUT_SCRIPT_HASH = sha1(TAIL_PUT_SCRIPT).hexdigest()
 
-HEAD_PUT_SCRIPT = b"""
+HEAD_PUT_SCRIPT = """
     redis.call("lpush", KEYS[1], ARGV[1])
     redis.call("hset", KEYS[2], ARGV[2], '1')
 """
 HEAD_PUT_SCRIPT_HASH = sha1(HEAD_PUT_SCRIPT).hexdigest()
 
-LPOP_SCRIPT = b"""
+LPOP_SCRIPT = """
     return redis.call("lpop", KEYS[1])
 """
 LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
@@ -267,7 +267,7 @@ class RedisQueue(QueueMixin):
 Queue = RedisQueue  # alias
 
 
-CLAIM_SCRIPT = b"""
+CLAIM_SCRIPT = """
     local x = redis.call("zrevrange", KEYS[1], 0, 0)
     if x[1] == nil then
         return nil
