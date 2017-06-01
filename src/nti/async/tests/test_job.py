@@ -33,7 +33,7 @@ from nti.async.tests import AsyncTestCase
 
 
 def call():
-    return 'my result'
+    return u'my result'
 
 
 class Demo(object):

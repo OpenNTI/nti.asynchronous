@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -38,7 +38,7 @@ class TestQueue(AsyncTestCase):
         queue = Queue()
         assert_that(queue, validly_provides(IQueue))
         assert_that(queue, verifiably_provides(IQueue))
-        
+
     def test_empty(self):
         queue = Queue()
         assert_that(queue, has_length(0))

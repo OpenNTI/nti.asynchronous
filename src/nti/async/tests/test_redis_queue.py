@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -20,6 +20,8 @@ from nti.testing.matchers import verifiably_provides
 import operator
 import transaction
 
+import fakeredis
+
 from nti.async.interfaces import IRedisQueue
 
 from nti.async.job import create_job
@@ -28,11 +30,9 @@ from nti.async.redis_queue import RedisQueue
 
 from nti.async.tests import AsyncTestCase
 
-from nti.dataserver.tests.mock_redis import InMemoryMockRedis
-
 
 def _redis():
-    return InMemoryMockRedis(db=200)
+    return fakeredis.FakeStrictRedis(db=200)
 
 
 def mock_work():
