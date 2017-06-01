@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -27,9 +27,9 @@ from nti.async.interfaces import COMPLETED
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IError
 
-from nti.async.threadlocal import manager
+from nti.async.representation import WithRepr
 
-from nti.externalization.representation import WithRepr
+from nti.async.threadlocal import manager
 
 from nti.property.property import alias
 

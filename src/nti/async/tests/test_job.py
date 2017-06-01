@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -110,7 +110,7 @@ class TestJob(AsyncTestCase):
         except:
             error = IError(sys.exc_info())
         assert_that(error, is_not(none()))
-        assert_that(error, 
+        assert_that(error,
                     has_property('message', has_length(greater_than(1))))
 
     def test_pickle(self):
@@ -123,7 +123,7 @@ class TestJob(AsyncTestCase):
         assert_that(unpickled.is_new(), is_(True))
         unpickled()
         assert_that(unpickled, has_property('result', is_(15)))
-        
+
     def test_current_job(self):
         assert_that(get_current_job(), is_(none()))
         job = Job(current_job)

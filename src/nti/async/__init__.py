@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -17,7 +17,7 @@ from nti.async.interfaces import IQueue
 from nti.async.job import create_job as job_creator
 
 
-def get_job_queue(name=u'', queue_interface=IQueue):
+def get_job_queue(name='', queue_interface=IQueue):
     result = component.queryUtility(queue_interface, name=name)
     return result
 

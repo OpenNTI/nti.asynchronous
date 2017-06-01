@@ -10,15 +10,9 @@ entry_points = {
 }
 
 TESTS_REQUIRE = [
-    'nose',
-    'nose-timer',
-    'nose-pudb',
-    'nose-progressive',
-    'nose2[coverage_plugin]',
-    'pyhamcrest',
-    'zope.testing',
-    'nti.nose_traceback_info',
-    'nti.testing'
+    'fakeredis',
+    'nti.testing',
+    'zope.testrunner',
 ]
 
 setup(
@@ -28,7 +22,7 @@ setup(
     author_email='jason@nextthought.com',
     description="NTI Async",
     long_description=codecs.open('README.rst', encoding='utf-8').read(),
-    license='Proprietary',
+    license='Apache',
     keywords='Queue Reactor',
     classifiers=[
         'Intended Audience :: Developers',
@@ -36,14 +30,16 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: Implementation :: CPython'
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
     namespace_packages=['nti'],
     install_requires=[
         'setuptools',
-        'nti.externalization',
         'nti.property',
         'nti.site',
         'nti.schema',

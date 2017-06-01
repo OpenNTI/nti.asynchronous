@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -32,7 +32,7 @@ COMPLETED = u'Completed'
 
 
 class IError(interface.Interface):
-    message = interface.Attribute("""Error message""")
+    message = interface.Attribute("Error message")
 
 
 class IBaseQueue(IContained):
@@ -104,11 +104,11 @@ class IRedisQueue(IBaseQueue):
 
 class IJob(IAttributeAnnotatable, IContained):
 
-    id = interface.Attribute("""job identifier.""")
+    id = interface.Attribute("job identifier.")
 
-    error = interface.Attribute("""Any job execution error.""")
+    error = interface.Attribute("Any job execution error.")
 
-    result = interface.Attribute("""The result of the call. """)
+    result = interface.Attribute("The result of the call.")
 
     callable = interface.Attribute(
         """The callable object that should be called with *IJob.args and
@@ -166,7 +166,7 @@ class IAsyncReactor(interface.Interface):
     marker interface for a reactor
     """
 
-    queue_names = interface.Attribute("""Queue names.""")
+    queue_names = interface.Attribute("Queue names.")
 
     def stop():
         """
