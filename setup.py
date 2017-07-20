@@ -55,6 +55,7 @@ setup(
         'BTrees',
         'gevent',
         'persistent',
+        'six',
         'transaction',
         'zc.queue',
         'ZODB',

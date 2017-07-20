@@ -19,6 +19,8 @@ from zope import interface
 
 from zope.location.interfaces import IContained
 
+from nti.async._compat import text_
+
 from nti.async.interfaces import NEW
 from nti.async.interfaces import ACTIVE
 from nti.async.interfaces import FAILED
@@ -177,7 +179,7 @@ def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
     jkwargs = jkwargs or {}
     jargs = [call] + list(jargs or ())
     result = cls(*jargs, **jkwargs)
-    result.id = unicode(jobid or uuid.uuid4())
+    result.id = text_(jobid or uuid.uuid4())
     return result
 
 
