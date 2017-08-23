@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -51,10 +51,9 @@ def handler(*args):
     raise SystemExit()
 
 
-def sigint_handler(*args):
+def sigint_handler(*unused_args):
     logger.info("Shutting down %s", os.getpid())
     sys.exit(0)
-
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, sigint_handler)
 
@@ -74,9 +73,9 @@ class Processor(object):
                                 action='store_true', dest='library')
         arg_parser.add_argument('--slugs',
                                 help="Load context slugs",
-                                dest='slugs', 
+                                dest='slugs',
                                 action='store_true')
-        
+
         # reactor queues
         arg_parser.add_argument('-n', '--name', help="Queue name",
                                 default=u'', dest='name')
@@ -93,32 +92,32 @@ class Processor(object):
         arg_parser.add_argument('-t', '--threaded', help="Threaded reactor",
                                 action='store_true', dest='threaded')
         arg_parser.add_argument('--priority', help="Priority redis queue",
-                                action='store_true', dest='priority')      
-        
+                                action='store_true', dest='priority')
+
         # reactor loop settings
         arg_parser.add_argument('--no_exit', help="Whether to exit on errors",
                                 default=True, dest='exit_error', action='store_false')
-        arg_parser.add_argument('-r', '--max_range_uniform', 
+        arg_parser.add_argument('-r', '--max_range_uniform',
                                 help="Max sleep range tic when no jobs",
-                                default=DEFAULT_MAX_UNIFORM, 
-                                dest='max_range_uniform', 
+                                default=DEFAULT_MAX_UNIFORM,
+                                dest='max_range_uniform',
                                 type=int)
         arg_parser.add_argument('-s', '--max_sleep_time',
                                 help="Max sleep time when no jobs",
-                                default=DEFAULT_MAX_SLEEP_TIME, 
-                                dest='max_sleep_time', 
+                                default=DEFAULT_MAX_SLEEP_TIME,
+                                dest='max_sleep_time',
                                 type=int)
-        
+
         # transaction runner
-        arg_parser.add_argument('--trx_sleep', 
+        arg_parser.add_argument('--trx_sleep',
                                 help="Transaction sleep",
-                                default=DEFAULT_TRX_SLEEP, 
-                                dest='trx_sleep', 
+                                default=DEFAULT_TRX_SLEEP,
+                                dest='trx_sleep',
                                 type=int)
         arg_parser.add_argument('--trx_retries',
                                 help="Max number of transaction retries",
-                                default=DEFAULT_TRX_RETRIES, 
-                                dest='trx_retries', 
+                                default=DEFAULT_TRX_RETRIES,
+                                dest='trx_retries',
                                 type=int)
         arg_parser.add_argument('--site', dest='site', help="Application SITE")
         return arg_parser
@@ -127,7 +126,7 @@ class Processor(object):
         arg_parser = argparse.ArgumentParser(description=self.processor_name)
         return self.add_arg_parser_arguments(arg_parser)
 
-    def set_log_formatter(self, args):
+    def set_log_formatter(self, *unused_args):
         ei = DEFAULT_LOG_FORMAT
         logging.root.handlers[0].setFormatter(zope_formatter(ei))
 
@@ -151,7 +150,7 @@ class Processor(object):
     def process_args(self, args):
         self.set_log_formatter(args)
 
-        name = getattr(args, 'name', None) or u''
+        name = getattr(args, 'name', None) or ''
         queue_names = getattr(args, 'queue_names', None)
 
         if not name and not queue_names:
@@ -187,14 +186,14 @@ class Processor(object):
 
         max_sleep_time = getattr(args, 'max_sleep_time')
         max_range_uniform = getattr(args, 'max_range_uniform')
-        
+
         trx_sleep = getattr(args, 'trx_sleep')
         trx_retries = getattr(args, 'trx_retries')
 
         kwargs = {
             'site_names': site_names,
             'trx_sleep': trx_sleep,
-            'trx_retries': trx_retries, 
+            'trx_retries': trx_retries,
             'queue_names': queue_names,
             'queue_interface': queue_interface,
             'max_sleep_time': max_sleep_time,
@@ -220,7 +219,7 @@ class Processor(object):
 
     def create_context(self, env_dir, args):
         slugs = getattr(args, 'slugs', False)
-        context = create_context(env_dir, 
+        context = create_context(env_dir,
                                  slugs=slugs,
                                  plugins=slugs,
                                  with_library=True)
@@ -230,7 +229,7 @@ class Processor(object):
     def conf_packages(self):
         return (self.conf_package, 'nti.async')
 
-    def __call__(self, **kwargs):
+    def __call__(self, **unused_kwargs):
         arg_parser = self.create_arg_parser()
         args = arg_parser.parse_args()
 
@@ -255,6 +254,7 @@ class Processor(object):
 
 def main():
     return Processor()()
+
 
 if __name__ == '__main__':
     main()
