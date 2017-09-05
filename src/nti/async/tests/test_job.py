@@ -19,8 +19,12 @@ from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
 import sys
-import pickle
 from io import BytesIO
+
+try:
+    from six.moves import cPickle as pickle
+except ImportError:
+    import pickle
 
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IError

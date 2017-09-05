@@ -11,10 +11,14 @@ logger = __import__('logging').getLogger(__name__)
 
 import time
 import zlib
-import pickle
 from io import BytesIO
 from hashlib import sha1
 from datetime import datetime
+
+try:
+    from six.moves import cPickle as pickle
+except ImportError:
+    import pickle
 
 from redis.exceptions import NoScriptError
 
