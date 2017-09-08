@@ -105,8 +105,8 @@ html_static_path = ['_static']
 
 # -- Options for HTMLHelp output ------------------------------------------
 
-# Output file async name for HTML help builder.
-htmlhelp_asyncname = 'ntiasyncdoc'
+# Output file base name for HTML help builder.
+htmlhelp_basename = 'ntiasyncdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
