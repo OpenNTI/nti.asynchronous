@@ -31,6 +31,12 @@ ACTIVE = u'Active'
 COMPLETED = u'Completed'
 
 
+class IException(interface.Interface):
+    """
+    marker interface for Exception objects
+    """
+
+
 class IError(interface.Interface):
     message = interface.Attribute("Error message")
 

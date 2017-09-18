@@ -9,6 +9,7 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import six
 import sys
 import uuid
 import types
@@ -116,7 +117,7 @@ class Job(object):
 
     def _set_callable(self, value):
         if isinstance(value, types.MethodType):
-            self._callable_root = value.im_self
+            self._callable_root = six.get_method_self(value)
             self._callable_name = value.__name__
         elif (isinstance(value, types.BuiltinMethodType) and
               getattr(value, '__self__', None) is not None):

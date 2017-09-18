@@ -43,7 +43,7 @@ class Queue(Persistent):
         self._length = BTrees.Length.Length(0)
         self._queue = CompositeQueue(compositeSize=compositeSize)
 
-    def put(self, item, *args, **kwargs):
+    def put(self, item, *unused_args, **unusedkwargs):
         item = IJob(item)
         self._queue.put(item)
         self._jobs.add(item.id)
@@ -58,7 +58,7 @@ class Queue(Persistent):
 
         def get_next(i):
             try:
-                next_ = i.next()
+                next_ = next(i)
             except StopIteration:
                 active = False
                 next_ = (None, None)

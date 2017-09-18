@@ -59,14 +59,14 @@ class TestPriorityQueue(AsyncTestCase):
         assert_that(list(queue), has_length(2))
 
         data = queue.keys()
-        assert_that(sorted(data), is_(['aizen', 'ichigo']))
+        assert_that(sorted(data), is_([b'aizen', b'ichigo']))
 
         job = queue.claim()
         assert_that(job, is_(ichigo))
         assert_that('ichigo', is_not(is_in(queue)))
 
         data = queue.keys()
-        assert_that(sorted(data), is_(['aizen']))
+        assert_that(sorted(data), is_([b'aizen']))
         assert_that(queue['aizen'], is_(aizen))
 
         queue.empty()
@@ -82,4 +82,4 @@ class TestPriorityQueue(AsyncTestCase):
         del queue['rukia']
         assert_that('rukia', is_not(is_in(queue)))
         data = queue.keys()
-        assert_that(sorted(data), is_(['aizen', 'ichigo']))
+        assert_that(sorted(data), is_([b'aizen', b'ichigo']))

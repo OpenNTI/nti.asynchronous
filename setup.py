@@ -62,6 +62,7 @@ setup(
         'ZODB',
         'zope.annotation',
         'zope.component',
+        'zope.configuration',
         'zope.exceptions',
         'zope.interface',
         'zope.location',

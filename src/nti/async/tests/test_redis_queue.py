@@ -17,7 +17,6 @@ from hamcrest import assert_that
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
-import operator
 import transaction
 
 import fakeredis
@@ -37,6 +36,10 @@ def _redis():
 
 def mock_work():
     return 42
+
+
+def multiply(a, b):
+    return a*b
 
 
 class TestRedisQueue(AsyncTestCase):
@@ -71,14 +74,14 @@ class TestRedisQueue(AsyncTestCase):
         queue = RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
 
-        job2 = queue.put(create_job(operator.mul, jargs=(7, 6)))
+        job2 = queue.put(create_job(multiply, jargs=(7, 6)))
         transaction.commit()
 
         assert_that(queue, has_length(1))
 
-        job3 = queue.put(create_job(operator.mul, jargs=(14, 3)))
-        job4 = queue.put(create_job(operator.mul, jargs=(21, 2)))
-        job5 = queue.put(create_job(operator.mul, jargs=(42, 1)))
+        job3 = queue.put(create_job(multiply, jargs=(14, 3)))
+        job4 = queue.put(create_job(multiply, jargs=(21, 2)))
+        job5 = queue.put(create_job(multiply, jargs=(42, 1)))
         transaction.commit()
 
         assert_that(queue, has_length(4))
@@ -98,8 +101,8 @@ class TestRedisQueue(AsyncTestCase):
         except NotImplementedError:
             pass
 
-        queue.put(create_job(operator.mul, jargs=(34, 1)))
-        job7 = queue.put(create_job(operator.mul, jargs=(34, 1)))
+        queue.put(create_job(multiply, jargs=(34, 1)))
+        job7 = queue.put(create_job(multiply, jargs=(34, 1)))
         transaction.commit()
         assert_that(queue, has_length(4))
         assert_that(queue.keys(), has_length(4))

@@ -17,7 +17,7 @@
 			 provides=".interfaces.IJob" />
 			 
 	<adapter factory=".adapters._default_error_adapter"
-			 for="exceptions.Exception"
+			 for=".interfaces.IException"
 			 provides=".interfaces.IError" />
 			 
 	<adapter factory=".adapters._default_exc_info"

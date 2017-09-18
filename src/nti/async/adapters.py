@@ -11,11 +11,13 @@ logger = __import__('logging').getLogger(__name__)
 
 import six
 
+from zope import component
 from zope import interface
 
 from zope.exceptions.exceptionformatter import format_exception
 
 from nti.async.interfaces import IError
+from nti.async.interfaces import IException
 
 from nti.async.job import Error
 
@@ -30,9 +32,10 @@ def _decode(l):
 
 @interface.implementer(IError)
 def _default_error_adapter(e):
-    return Error(e.message)
+    return Error(str(e))
 
 
+@component.adapter(IException)
 @interface.implementer(IError)
 def _default_exc_info(exc_info):
     t, v, tb = exc_info
@@ -44,3 +47,5 @@ def _default_exc_info(exc_info):
     message = ''.join(lines)
     result = Error(message)
     return result
+
+interface.classImplements(Exception, IException)
