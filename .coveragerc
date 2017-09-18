@@ -1,5 +1,6 @@
 [run]
 source = nti.async
+parallel = true
 
 [report]
 exclude_lines =
