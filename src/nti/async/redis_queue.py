@@ -135,19 +135,19 @@ class QueueMixin(object):
         return bool(len(self))
 
 
-TAIL_PUT_SCRIPT = """
+TAIL_PUT_SCRIPT = b"""
     redis.call("rpush", KEYS[1], ARGV[1])
     redis.call("hset", KEYS[2], ARGV[2], '1')
 """
 TAIL_PUT_SCRIPT_HASH = sha1(TAIL_PUT_SCRIPT).hexdigest()
 
-HEAD_PUT_SCRIPT = """
+HEAD_PUT_SCRIPT = b"""
     redis.call("lpush", KEYS[1], ARGV[1])
     redis.call("hset", KEYS[2], ARGV[2], '1')
 """
 HEAD_PUT_SCRIPT_HASH = sha1(HEAD_PUT_SCRIPT).hexdigest()
 
-LPOP_SCRIPT = """
+LPOP_SCRIPT = b"""
     return redis.call("lpop", KEYS[1])
 """
 LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
@@ -271,7 +271,7 @@ class RedisQueue(QueueMixin):
 Queue = RedisQueue  # alias
 
 
-CLAIM_SCRIPT = """
+CLAIM_SCRIPT = b"""
     local x = redis.call("zrevrange", KEYS[1], 0, 0)
     if x[1] == nil then
         return nil
