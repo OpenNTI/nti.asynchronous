@@ -17,16 +17,6 @@ else:
     _unicode = unicode
 
 
-def bytes_(s, encoding='utf-8', errors='strict'):
-    """
-    If ``s`` is an instance of ``text_type``, return
-    ``s.encode(encoding, errors)``, otherwise return ``s``
-    """
-    if isinstance(s, six.text_type):
-        return s.encode(encoding, errors)
-    return s
-
-
 def text_(s, encoding='utf-8', err='strict'):
     """
     Decode a byte sequence and unicode result
