@@ -1,22 +1,24 @@
 language: python
 sudo: false
 python:
-	- 2.7
-	- 3.6
-	- pypy
-	- pypy3.5-5.8.0
-install:
-	- pip install -U pip setuptools
-	- pip install -U coverage coveralls
-	- pip install -U -e .[test]
+  - 2.7
+  - 3.6
+  - pypy
+  - pypy3
 script:
-	- coverage run -m zope.testrunner --test-path=src -vv
+  - coverage run -m zope.testrunner
 after_success:
-	- coverage combine
-	- coveralls
+  - coveralls
 notifications:
-	email: dev-regression-tests@nextthought.com
-cache: 
-	pip
+  email: dev-regression-tests@nextthought.com
+
+install:
+  - pip install -U pip
+  - pip install -U setuptools
+  - pip install -U coveralls coverage
+  - pip install -U -e ".[test]"
+
+cache: pip
+
 before_cache:
-	- rm -f $HOME/.cache/pip/log/debug.log
+  - rm -f $HOME/.cache/pip/log/debug.log
