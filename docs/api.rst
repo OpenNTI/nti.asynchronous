@@ -3,7 +3,7 @@
 ===========
 
 Compat
-==========
+======
 
 .. automodule:: nti.async._compat
 

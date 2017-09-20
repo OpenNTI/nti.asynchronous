@@ -56,6 +56,7 @@ setup(
         'BTrees',
         'gevent',
         'persistent',
+        'redis',
         'six',
         'transaction',
         'zc.queue',
@@ -70,6 +71,11 @@ setup(
     ],
     extras_require={
         'test': TESTS_REQUIRE,
+        'docs': [
+            'Sphinx',
+            'repoze.sphinx.autointerface',
+            'sphinx_rtd_theme',
+        ]
     },
     entry_points=entry_points,
 )

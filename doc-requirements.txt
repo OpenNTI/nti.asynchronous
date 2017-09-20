@@ -1,4 +1,6 @@
 setuptools >= 33.1.1
+persistent
+BTrees
 zope.interface
 repoze.sphinx.autointerface
 sphinx_rtd_theme
