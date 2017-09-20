@@ -14,7 +14,7 @@ from hashlib import sha1
 from datetime import datetime
 
 try:
-    from six.moves import cPickle as pickle
+    import cPickle as pickle
 except ImportError:
     import pickle
 
