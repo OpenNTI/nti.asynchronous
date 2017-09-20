@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 import six
 
 from zope import component
@@ -20,6 +18,8 @@ from nti.async.interfaces import IError
 from nti.async.interfaces import IException
 
 from nti.async.job import Error
+
+logger = __import__('logging').getLogger(__name__)
 
 
 def _encode(l):

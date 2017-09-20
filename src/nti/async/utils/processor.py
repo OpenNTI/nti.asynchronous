@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 import os
 import sys
 import time
@@ -43,6 +41,9 @@ from nti.dataserver.utils import run_with_dataserver
 from nti.dataserver.utils.base_script import create_context
 
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)-5.5s [%(name)s][%(thread)d][%(threadName)s] %(message)s'
+
+logger = __import__('logging').getLogger(__name__)
+
 
 # signal handlers
 

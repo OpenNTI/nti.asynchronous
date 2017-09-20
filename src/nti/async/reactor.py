@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 import time
 import random
 import logging
@@ -44,6 +42,8 @@ DEFAULT_TRX_RETRIES = 3
 
 DEFAULT_MAX_UNIFORM = 5
 DEFAULT_MAX_SLEEP_TIME = 60
+
+logger = __import__('logging').getLogger(__name__)
 
 
 class RunnerMixin(object):

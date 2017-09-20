@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 import time
 import zlib
 from io import BytesIO
@@ -42,6 +40,8 @@ DEFAULT_QUEUE_NAME = u'nti/async/jobs'
 
 USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
+
+logger = __import__('logging').getLogger(__name__)
 
 
 class QueueMixin(object):

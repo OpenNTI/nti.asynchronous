@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 from zope import interface
 
 from zope.location.interfaces import IContained
@@ -23,6 +21,8 @@ from persistent.list import PersistentList
 
 from nti.async.interfaces import IJob
 from nti.async.interfaces import IQueue
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @interface.implementer(IQueue, IContained)

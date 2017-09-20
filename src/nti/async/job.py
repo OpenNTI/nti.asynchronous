@@ -7,8 +7,6 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
-
 import six
 import sys
 import uuid
@@ -49,6 +47,8 @@ _status_mapping = {
     FAILED_ID: FAILED,
     COMPLETED_ID: COMPLETED
 }
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @WithRepr
