@@ -13,7 +13,8 @@ import six
 
 def text_(s, encoding='utf-8', err='strict'):
     """
-    Decode a byte sequence and unicode result
+    Produce an and unicode result of the specified input
     """
-    s = s.decode(encoding, err) if isinstance(s, bytes) else s
+    if not isinstance(s, six.text_type) and s is not None:
+        s = s.decode(encoding, err)
     return six.text_type(s) if s is not None else None
