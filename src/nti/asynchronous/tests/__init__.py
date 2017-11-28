@@ -21,7 +21,7 @@ class SharedConfiguringTestLayer(ZopeComponentLayer,
                                  GCLayerMixin,
                                  ConfiguringLayerMixin):
 
-    set_up_packages = ('nti.async',)
+    set_up_packages = ('nti.asynchronous',)
 
     @classmethod
     def setUp(cls):

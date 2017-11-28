@@ -15,10 +15,10 @@ from zope import interface
 
 from zope.exceptions.exceptionformatter import format_exception
 
-from nti.async.interfaces import IError
-from nti.async.interfaces import IException
+from nti.asynchronous.interfaces import IError
+from nti.asynchronous.interfaces import IException
 
-from nti.async.job import Error
+from nti.asynchronous.job import Error
 
 logger = __import__('logging').getLogger(__name__)
 

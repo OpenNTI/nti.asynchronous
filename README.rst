@@ -1,9 +1,9 @@
-===========
- nti.async
-===========
+==================
+ nti.asynchronous
+==================
 
-.. image:: https://travis-ci.org/NextThought/nti.async.svg?branch=master
-    :target: https://travis-ci.org/NextThought/nti.async
+.. image:: https://travis-ci.org/NextThought/nti.asynchronous.svg?branch=master
+    :target: https://travis-ci.org/NextThought/nti.asynchronous
 
-.. image:: https://coveralls.io/repos/github/NextThought/nti.async/badge.svg?branch=master
-    :target: https://coveralls.io/github/NextThought/nti.async?branch=master
+.. image:: https://coveralls.io/repos/github/NextThought/nti.asynchronous/badge.svg?branch=master
+    :target: https://coveralls.io/github/NextThought/nti.asynchronous?branch=master

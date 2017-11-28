@@ -21,20 +21,16 @@ from nti.testing.matchers import verifiably_provides
 
 import sys
 from io import BytesIO
+from six.moves import cPickle as pickle
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from nti.asynchronous.interfaces import IJob
+from nti.asynchronous.interfaces import IError
 
-from nti.async.interfaces import IJob
-from nti.async.interfaces import IError
+from nti.asynchronous.job import Job
 
-from nti.async.job import Job
+from nti.asynchronous.threadlocal import get_current_job
 
-from nti.async.threadlocal import get_current_job
-
-from nti.async.tests import AsyncTestCase
+from nti.asynchronous.tests import AsyncTestCase
 
 
 def call():

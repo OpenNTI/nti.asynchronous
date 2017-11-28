@@ -16,13 +16,13 @@ from hamcrest import assert_that
 
 import operator
 
-from nti.async.job import create_job
+from nti.asynchronous.job import create_job
 
-from nti.async.queue import Queue
+from nti.asynchronous.queue import Queue
 
-from nti.async.reactor import AsyncReactor
+from nti.asynchronous.reactor import AsyncReactor
 
-from nti.async.tests import AsyncTestCase
+from nti.asynchronous.tests import AsyncTestCase
 
 
 def mock_work():

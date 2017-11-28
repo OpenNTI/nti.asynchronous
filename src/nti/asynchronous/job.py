@@ -19,19 +19,19 @@ from zope import interface
 
 from zope.location.interfaces import IContained
 
-from nti.async._compat import text_
+from nti.asynchronous._compat import text_
 
-from nti.async.interfaces import NEW
-from nti.async.interfaces import ACTIVE
-from nti.async.interfaces import FAILED
-from nti.async.interfaces import COMPLETED
+from nti.asynchronous.interfaces import NEW
+from nti.asynchronous.interfaces import ACTIVE
+from nti.asynchronous.interfaces import FAILED
+from nti.asynchronous.interfaces import COMPLETED
 
-from nti.async.interfaces import IJob
-from nti.async.interfaces import IError
+from nti.asynchronous.interfaces import IJob
+from nti.asynchronous.interfaces import IError
 
-from nti.async.representation import WithRepr
+from nti.asynchronous.representation import WithRepr
 
-from nti.async.threadlocal import manager
+from nti.asynchronous.threadlocal import manager
 
 from nti.property.property import alias
 

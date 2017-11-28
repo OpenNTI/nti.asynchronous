@@ -20,8 +20,8 @@ from persistent import Persistent
 
 from persistent.list import PersistentList
 
-from nti.async.interfaces import IJob
-from nti.async.interfaces import IQueue
+from nti.asynchronous.interfaces import IJob
+from nti.asynchronous.interfaces import IQueue
 
 logger = __import__('logging').getLogger(__name__)
 

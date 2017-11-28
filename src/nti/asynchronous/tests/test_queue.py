@@ -20,13 +20,13 @@ from nti.testing.matchers import verifiably_provides
 
 import operator
 
-from nti.async.interfaces import IQueue
+from nti.asynchronous.interfaces import IQueue
 
-from nti.async.job import create_job
+from nti.asynchronous.job import create_job
 
-from nti.async.queue import Queue
+from nti.asynchronous.queue import Queue
 
-from nti.async.tests import AsyncTestCase
+from nti.asynchronous.tests import AsyncTestCase
 
 
 def mock_work():
