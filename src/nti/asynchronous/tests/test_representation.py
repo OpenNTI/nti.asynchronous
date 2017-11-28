@@ -14,7 +14,7 @@ from hamcrest import contains_string
 
 import unittest
 
-from nti.async.representation import WithRepr
+from nti.asynchronous.representation import WithRepr
 
 
 class TestRepresentation(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestRepresentation(unittest.TestCase):
             pass
 
         r = repr(Foo())
-        assert_that(r, contains_string('<nti.async.tests.test_representation.Foo'))
+        assert_that(r, contains_string('<nti.asynchronous.tests.test_representation.Foo'))
         assert_that(r, contains_string('{}>'))
 
     def test_proxied(self):
@@ -36,7 +36,7 @@ class TestRepresentation(unittest.TestCase):
             pass
 
         r = repr(ProxyFactory(Foo()))
-        assert_that(r, contains_string('<nti.async.tests.test_representation.Foo at'))
+        assert_that(r, contains_string('<nti.asynchronous.tests.test_representation.Foo at'))
         assert_that(r, contains_string('{}'))
 
 
@@ -59,7 +59,7 @@ class TestRepresentation(unittest.TestCase):
 
         r = repr(Foo())
         assert_that(r,
-                    is_("<nti.async.tests.test_representation.Foo(Ghost, "
+                    is_("<nti.asynchronous.tests.test_representation.Foo(Ghost, "
                         "ConnectionStateError('CSE',))>"))
 
     def test_raises_attribute_error(self):
@@ -72,5 +72,5 @@ class TestRepresentation(unittest.TestCase):
 
         r = repr(Foo())
         assert_that(r,
-                    is_("<nti.async.tests.test_representation.Foo("
+                    is_("<nti.asynchronous.tests.test_representation.Foo("
                         "AttributeError('an attr',))>"))

@@ -18,17 +18,17 @@ from hamcrest import assert_that
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
-import transaction
-
 import fakeredis
 
-from nti.async.interfaces import IRedisQueue
+import transaction
 
-from nti.async.job import create_job
+from nti.asynchronous.interfaces import IRedisQueue
 
-from nti.async.redis_queue import RedisQueue
+from nti.asynchronous.job import create_job
 
-from nti.async.tests import AsyncTestCase
+from nti.asynchronous.redis_queue import RedisQueue
+
+from nti.asynchronous.tests import AsyncTestCase
 
 
 def _redis():

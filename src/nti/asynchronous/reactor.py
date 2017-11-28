@@ -28,10 +28,10 @@ from zope.event import notify
 
 from ZODB.POSException import ConflictError
 
-from nti.async.interfaces import IQueue
-from nti.async.interfaces import IAsyncReactor
-from nti.async.interfaces import ReactorStarted
-from nti.async.interfaces import ReactorStopped
+from nti.asynchronous.interfaces import IQueue
+from nti.asynchronous.interfaces import IAsyncReactor
+from nti.asynchronous.interfaces import ReactorStarted
+from nti.asynchronous.interfaces import ReactorStopped
 
 from nti.site.interfaces import ISiteTransactionRunner
 

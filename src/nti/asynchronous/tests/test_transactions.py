@@ -16,13 +16,13 @@ import fakeredis
 
 import transaction
 
-from nti.async.job import create_job
+from nti.asynchronous.job import create_job
 
-from nti.async.redis_queue import RedisQueue
+from nti.asynchronous.redis_queue import RedisQueue
+
+from nti.asynchronous.tests import AsyncTestCase
 
 from nti.transactions import transactions
-
-from nti.async.tests import AsyncTestCase
 
 
 def _redis():

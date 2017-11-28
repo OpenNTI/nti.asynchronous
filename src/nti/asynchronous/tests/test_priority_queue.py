@@ -20,13 +20,13 @@ from nti.testing.matchers import verifiably_provides
 
 import fakeredis
 
-from nti.async.interfaces import IRedisQueue
+from nti.asynchronous.interfaces import IRedisQueue
 
-from nti.async.job import create_job
+from nti.asynchronous.job import create_job
 
-from nti.async.redis_queue import PriorityQueue
+from nti.asynchronous.redis_queue import PriorityQueue
 
-from nti.async.tests import AsyncTestCase
+from nti.asynchronous.tests import AsyncTestCase
 
 
 def _redis():

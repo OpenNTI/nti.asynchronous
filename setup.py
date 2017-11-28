@@ -20,7 +20,7 @@ def _read(fname):
 
 
 setup(
-    name='nti.async',
+    name='nti.asynchronous',
     version=_read('version.txt').strip(),
     author='Jason Madden',
     author_email='jason@nextthought.com',
@@ -39,7 +39,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
-    url="https://github.com/NextThought/nti.async",
+    url="https://github.com/NextThought/nti.asynchronous",
     zip_safe=True,
     packages=find_packages('src'),
     package_dir={'': 'src'},
@@ -72,9 +72,12 @@ setup(
     extras_require={
         'test': TESTS_REQUIRE,
         'docs': [
+            'persistent',
+            'BTrees',
             'Sphinx',
             'repoze.sphinx.autointerface',
             'sphinx_rtd_theme',
+            'zope.interface',
         ]
     },
     entry_points=entry_points,

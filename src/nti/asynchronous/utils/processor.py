@@ -19,21 +19,21 @@ from zope.exceptions.log import Formatter as zope_formatter
 
 from zope import component
 
-from nti.async.interfaces import IQueue
-from nti.async.interfaces import IRedisQueue
-from nti.async.interfaces import IAsyncReactor
+from nti.asynchronous.interfaces import IQueue
+from nti.asynchronous.interfaces import IRedisQueue
+from nti.asynchronous.interfaces import IAsyncReactor
 
-from nti.async.reactor import DEFAULT_TRX_SLEEP
-from nti.async.reactor import DEFAULT_TRX_RETRIES
-from nti.async.reactor import DEFAULT_MAX_UNIFORM
-from nti.async.reactor import DEFAULT_MAX_SLEEP_TIME
+from nti.asynchronous.reactor import DEFAULT_TRX_SLEEP
+from nti.asynchronous.reactor import DEFAULT_TRX_RETRIES
+from nti.asynchronous.reactor import DEFAULT_MAX_UNIFORM
+from nti.asynchronous.reactor import DEFAULT_MAX_SLEEP_TIME
 
-from nti.async.reactor import AsyncReactor
-from nti.async.reactor import ThreadedReactor
-from nti.async.reactor import AsyncFailedReactor
+from nti.asynchronous.reactor import AsyncReactor
+from nti.asynchronous.reactor import ThreadedReactor
+from nti.asynchronous.reactor import AsyncFailedReactor
 
-from nti.async.redis_queue import RedisQueue
-from nti.async.redis_queue import PriorityQueue
+from nti.asynchronous.redis_queue import RedisQueue
+from nti.asynchronous.redis_queue import PriorityQueue
 
 from nti.dataserver.interfaces import IRedisClient
 from nti.dataserver.interfaces import IDataserverTransactionRunner
@@ -229,7 +229,7 @@ class Processor(object):
         return context
 
     def conf_packages(self):
-        return (self.conf_package, 'nti.async')
+        return (self.conf_package, 'nti.asynchronous')
 
     def __call__(self, **unused_kwargs):
         arg_parser = self.create_arg_parser()

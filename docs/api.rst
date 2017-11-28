@@ -5,44 +5,44 @@
 Compat
 ======
 
-.. automodule:: nti.async._compat
+.. automodule:: nti.asynchronous._compat
 
 Adapters
 ========
 
-.. automodule:: nti.async.adapters
+.. automodule:: nti.asynchronous.adapters
 
 Interfaces
 ==========
 
-.. automodule:: nti.async.interfaces
+.. automodule:: nti.asynchronous.interfaces
 
 Job
 ===
 
-.. automodule:: nti.async.job
+.. automodule:: nti.asynchronous.job
 
 Queue
 =====
 
-.. automodule:: nti.async.queue
+.. automodule:: nti.asynchronous.queue
 
 Reactor
 =======
 
-.. automodule:: nti.async.reactor
+.. automodule:: nti.asynchronous.reactor
 
 Redis Queue
 ===========
 
-.. automodule:: nti.async.redis_queue
+.. automodule:: nti.asynchronous.redis_queue
 
 Representation
 ==============
 
-.. automodule:: nti.async.representation
+.. automodule:: nti.asynchronous.representation
 
 Threadlocal
 ===========
 
-.. automodule:: nti.async.threadlocal
+.. automodule:: nti.asynchronous.threadlocal

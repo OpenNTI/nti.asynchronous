@@ -10,10 +10,10 @@ from __future__ import absolute_import
 
 from zope import component
 
-from nti.async.interfaces import IJob
-from nti.async.interfaces import IQueue
+from nti.asynchronous.interfaces import IJob
+from nti.asynchronous.interfaces import IQueue
 
-from nti.async.job import create_job as job_creator
+from nti.asynchronous.job import create_job as job_creator
 
 
 def get_job_queue(name='', queue_interface=IQueue):

@@ -13,11 +13,7 @@ import zlib
 from io import BytesIO
 from hashlib import sha1
 from datetime import datetime
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from six.moves import cPickle as pickle
 
 from redis.exceptions import NoScriptError
 
@@ -29,9 +25,9 @@ from zope.cachedescriptors.property import Lazy
 
 from zope.event import notify
 
-from nti.async.interfaces import IJob
-from nti.async.interfaces import IRedisQueue
-from nti.async.interfaces import JobAbortedEvent
+from nti.asynchronous.interfaces import IJob
+from nti.asynchronous.interfaces import IRedisQueue
+from nti.asynchronous.interfaces import JobAbortedEvent
 
 from nti.property.property import alias
 
