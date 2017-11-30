@@ -14,3 +14,5 @@ dist/
 .coverage
 htmlcov/
 docs/_build/
+
+src/nti.asynchronous.egg-info
