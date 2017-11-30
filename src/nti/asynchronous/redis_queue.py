@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+# pylint: disable=E0611,E1101,F0401,W0212,W0221
+
 import time
 import zlib
 from io import BytesIO

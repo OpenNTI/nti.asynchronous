@@ -6,7 +6,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=W0212,W0703,R0904
 
 from hamcrest import is_
 from hamcrest import none
@@ -108,7 +108,7 @@ class TestJob(AsyncTestCase):
 
         try:
             raise Exception()
-        except:
+        except Exception:
             error = IError(sys.exc_info())
         assert_that(error, is_not(none()))
         assert_that(error,
