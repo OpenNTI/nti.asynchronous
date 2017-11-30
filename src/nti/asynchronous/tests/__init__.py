@@ -6,7 +6,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=W0212,W0221,R0904
 
 from zope import component
 
