@@ -92,7 +92,7 @@ class RunnerMixin(object):
             logger.error("[%s] Job %s failed", queue, job.id)
             queue.put_failed(job)
         logger.info("[%s] Job %s has been executed (%s).",
-                     queue, job.id, job.status)
+                    queue, job.id, job.status)
         return True
 
     @Lazy
@@ -192,7 +192,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         # These are basically priority queues.
         # We should start at the beginning each time.
         job = None
-        for queue in self.queues:
+        for queue in self.queues:  # pylint: disable=not-an-iterable
             job = queue.claim()
             if job is not None:
                 self.current_job = job
@@ -210,8 +210,9 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
     def process_job(self):
         result = True
         try:
-            # XXX: Should we pull jobs outside of transaction to
+            # Should we pull jobs outside of transaction to
             # avoid race conditions?
+            # pylint: disable=unexpected-keyword-arg,too-many-function-args
             if self.transaction_runner(self.execute_job,
                                        sleep=self.trx_sleep,
                                        retries=self.trx_retries):
@@ -231,11 +232,11 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                 ZODBUnableToAcquireCommitLock) as e:
             logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
                          self.current_queue, e)
-        except:
+        except Exception:  # pylint: disable=broad-except
             logger.exception('Cannot execute job.')
             result = not self.exitOnError
         finally:
-            # XXX: Signal we need to get a new job
+            # Signal we need to get a new job
             self.current_queue = self.current_job = None
         return result
     processJob = process_job
@@ -267,8 +268,10 @@ class AsyncFailedReactor(AsyncReactor):
 
     current_jobs = None
 
+    # pylint: disable=super-init-not-called
     def __init__(self, queue_names=(), queue_interface=IQueue,
                  site_names=(), **kwargs):
+        # pylint: disable=non-parent-init-called
         RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
 
@@ -281,6 +284,7 @@ class AsyncFailedReactor(AsyncReactor):
     def __iter__(self):
         queue = self.current_queue
         job = original_job = queue.claim()
+        # pylint: disable=protected-access
         logger.info('Processing queue [%s]', queue._name)
         while job is not None:
             yield job
@@ -321,16 +325,18 @@ class AsyncFailedReactor(AsyncReactor):
         for queue in self.queues:
             try:
                 self.current_queue = queue  # set proper queue
+                # pylint: disable=unexpected-keyword-arg,too-many-function-args
                 count = self.transaction_runner(self.execute_job,
                                                 retries=3,
                                                 sleep=1)
+                # pylint: disable=protected-access
                 logger.info('Finished processing queue [%s] [count=%s]',
                             queue._name, count)
             finally:
-                # XXX: Signal jobs for next que need to be processed
+                # Signal jobs for next que need to be processed
                 self.current_job = self.current_queue = self.current_jobs = None
 
-    def run(self):
+    def run(self, unused_sleep=gevent.sleep):
         self.start()
         try:
             logger.info('Starting reactor for failed jobs in queues=(%s)',
@@ -338,7 +344,7 @@ class AsyncFailedReactor(AsyncReactor):
             self.process_job()
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queues=(%s)', 
+            logger.warn('Exiting reactor. queues=(%s)',
                         set(self.queue_names))
             self.processor = None
     __call__ = run
@@ -363,6 +369,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
         # we are in a retry from the transaction runner
         if self.current_job is not None:
             return self.current_job
+        # pylint: disable=no-member
         job = self.queue.claim()
         if job is not None:
             return self.perform_job(job, self.queue)
@@ -377,6 +384,7 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                 try:
                     try:
                         runner = self.transaction_runner
+                        # pylint: disable=unexpected-keyword-arg,too-many-function-args
                         if not runner(self.execute_job,
                                       sleep=self.trx_sleep,
                                       retries=self.trx_retries):
@@ -398,10 +406,10 @@ class SingleQueueReactor(RunnerMixin, ReactorMixin):
                             ZODBUnableToAcquireCommitLock) as e:
                         logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
                                      self.queue, e)
-                    except:
+                    except Exception:  # pylint: disable=broad-except
                         logger.exception('Cannot execute job.')
                     finally:
-                        # XXX: Signal we need to get a new job
+                        # Signal we need to get a new job
                         self.current_job = None
                 except KeyboardInterrupt:
                     break
@@ -445,6 +453,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                                             trx_retries=self.trx_retries,
                                             max_sleep_time=self.max_sleep_time,
                                             max_range_uniform=self.max_range_uniform)
+                # pylint: disable=attribute-defined-outside-init
                 target.__parent__ = self
                 thread = Thread(target=target, name=name)
                 thread.daemon = True
@@ -458,9 +467,10 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                     break
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queue=(%s)', 
+            logger.warn('Exiting reactor. queue=(%s)',
                         set(self.queue_names))
     __call__ = run
+
 
 # Reduce verbosity of activity logger
 activity_logger = __import__('logging').getLogger("nti.zodb.activitylog")

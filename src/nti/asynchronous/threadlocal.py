@@ -14,12 +14,13 @@ logger = __import__('logging').getLogger(__name__)
 
 
 def defaults():
-    return {'job': None, 'callable':None}
+    return {'job': None, 'callable': None}
 
 
 class ThreadLocalManager(threading.local):
 
     def __init__(self, default=None):
+        super(ThreadLocalManager, self).__init__()
         self.stack = []
         self.default = default
 

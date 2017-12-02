@@ -8,8 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-# pylint: disable=E0611,E1101,F0401,W0212,W0221
-
 import time
 import zlib
 from io import BytesIO
@@ -17,7 +15,7 @@ from hashlib import sha1
 from datetime import datetime
 from six.moves import cPickle as pickle
 
-from redis.exceptions import NoScriptError
+from redis.exceptions import NoScriptError  # pylint: disable=import-error,no-name-in-module
 
 import transaction
 
@@ -78,6 +76,7 @@ class QueueMixin(object):
     def put(self, item, use_transactions=True, tail=True):
         item = IJob(item)
         data = self._pickle(item)
+        # pylint: disable=no-member
         pipe = self._redis.pipeline()
         logger.debug('Placing job (%s) in [%s]', item.id, self._name)
         if use_transactions:
@@ -114,19 +113,23 @@ class QueueMixin(object):
         return self._name
 
     def __repr__(self):
+        # pylint: disable=protected-access
         return "%s(%s,%s)" % (self.__class__.__name__,
                               self._name,
                               self._failed._name)
 
     def keys(self):
+        # pylint: disable=no-member
         result = self._redis.hkeys(self._hash)
         return result or ()
 
     def __len__(self):
+        # pylint: disable=no-member
         result = self._redis.hlen(self._hash)
         return result or 0
 
     def __contains__(self, key):
+        # pylint: disable=no-member
         result = self._redis.hexists(self._hash, key)
         return bool(result)
 
@@ -167,6 +170,7 @@ class RedisQueue(QueueMixin):
                                       create_failed_queue=False)
 
     def _do_put_job_lua(self, data, tail, jid):
+        # pylint: disable=no-member
         try:
             script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
             hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
@@ -195,6 +199,7 @@ class RedisQueue(QueueMixin):
             self._do_put_job_pipe(pipe, data, tail, jid)
 
     def all(self, unpickle=True):
+        # pylint: disable=no-member
         data = self._redis.lrange(self._name, 0, -1)
         if unpickle:
             result = [self._unpickle(x) for x in data or ()]
@@ -208,6 +213,7 @@ class RedisQueue(QueueMixin):
         raise NotImplementedError()
 
     def _do_claim_lua(self):
+        # pylint: disable=no-member
         try:
             result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
         except NoScriptError:
@@ -215,6 +221,7 @@ class RedisQueue(QueueMixin):
         return result
 
     def _do_claim_client(self):
+        # pylint: disable=no-member
         result = self._redis.lpop(self._name)
         return result
 
@@ -228,6 +235,7 @@ class RedisQueue(QueueMixin):
             return self._do_claim_client()
 
     def claim(self, default=None):
+        # pylint: disable=no-member
         # once we get the job from redis, it's remove from it
         data = self._do_claim()
         if data is None:
@@ -247,6 +255,7 @@ class RedisQueue(QueueMixin):
         return job
 
     def empty(self):
+        # pylint: disable=no-member
         keys = self._redis.pipeline().delete(self._name) \
                           .hkeys(self._hash).execute()
         if keys and keys[1]:
@@ -259,6 +268,7 @@ class RedisQueue(QueueMixin):
         return iter(self.all(True))
 
     def __getitem__(self, index):
+        # pylint: disable=no-member
         data = self._redis.lindex(self._name, index)
         if data is None:
             raise IndexError(index)
@@ -267,6 +277,8 @@ class RedisQueue(QueueMixin):
 
     def __delitem__(self, index):
         raise NotImplementedError()
+
+
 Queue = RedisQueue  # alias
 
 
@@ -296,6 +308,7 @@ class PriorityQueue(QueueMixin):
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
 
+    # pylint: disable=arguments-differ
     def _do_put_job(self, pipe, data, tail=True, jid=None, score=None):
         assert jid, 'must provide a job id'
         if score is None:
@@ -308,6 +321,7 @@ class PriorityQueue(QueueMixin):
         pipe.execute()
 
     def _do_claim_lua(self):
+        # pylint: disable=no-member
         try:
             result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
         except NoScriptError:
@@ -315,6 +329,7 @@ class PriorityQueue(QueueMixin):
         return result
 
     def _do_claim_client(self):
+        # pylint: disable=no-member
         try:
             jid = self._redis.zrevrange(self._name, 0, 0)[0]
             while self._redis.zrem(self._name, jid) == 0:
@@ -339,6 +354,7 @@ class PriorityQueue(QueueMixin):
         jid = self._do_claim()
         if jid is None:
             return default
+        # pylint: disable=no-member
         # We managed to pop the item from the queue. remove job
         data = self._redis.pipeline().hget(self._hash, jid) \
                           .hdel(self._hash, jid).execute()[0]
@@ -354,6 +370,7 @@ class PriorityQueue(QueueMixin):
         return job
 
     def empty(self):
+        # pylint: disable=no-member
         keys = self._redis.pipeline().zremrangebyscore(self._name, 0, MAX_TIMESTAMP) \
                           .hkeys(self._hash).execute()
         if keys and keys[1]:
@@ -368,6 +385,7 @@ class PriorityQueue(QueueMixin):
         del self[item]
 
     def all(self, unpickle=True):
+        # pylint: disable=no-member
         all_jobs = self._redis.hgetall(self._hash) or {}
         if not unpickle:
             result = [x for x in all_jobs.values() if x is not None]
@@ -380,12 +398,14 @@ class PriorityQueue(QueueMixin):
     values = all
 
     def __getitem__(self, key):
+        # pylint: disable=no-member
         data = self._redis.hget(self._hash, key)
         if data is not None:
             return self._unpickle(data)
         raise KeyError(key)
 
     def __delitem__(self, key):
+        # pylint: disable=no-member
         if self._redis.zrem(self._name, key):
             self._redis.hdel(self._hash, key)
 

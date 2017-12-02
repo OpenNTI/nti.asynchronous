@@ -106,7 +106,7 @@ class Job(object):
     def is_new(self):
         return self._status_id == NEW_ID
     isNew = is_new
-    
+
     def is_running(self):
         return self._status_id == ACTIVE_ID
     isRunning = is_running
@@ -139,11 +139,12 @@ class Job(object):
         effective_args[0:0] = self.args
         effective_kwargs = dict(self.kwargs)
         effective_kwargs.update(kwargs)
-        __traceback_info__ = (self._callable_root, 
-                              self._callable_name, 
-                              effective_args, 
+        # pylint: disable=unused-variable
+        __traceback_info__ = (self._callable_root,
+                              self._callable_name,
+                              effective_args,
                               effective_kwargs)
-        manager.push({'job': self, 
+        manager.push({'job': self,
                       'args': effective_args,
                       'kwargs': effective_kwargs,
                       'callable': self.callable})
@@ -153,18 +154,19 @@ class Job(object):
             self._status_id = COMPLETED_ID
             self._result = result
             return result
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self._status_id = FAILED_ID
-            self._error =  self.error_adapter(sys.exc_info(), None) \
-                        or self.error_adapter(e, None)
+            self._error = self.error_adapter(sys.exc_info(), None) \
+                       or self.error_adapter(e, None)
             logger.exception("Job (%s) execution failed", self)
         finally:
             self._active_end = datetime.datetime.utcnow()
-            manager.pop() # done w/ job
+            manager.pop()  # done w/ job
     __call__ = run
-    
+
     def __eq__(self, other):
         try:
+            # pylint: disable=protected-access
             return self is other or (self._id == other._id and self._id)
         except AttributeError:
             return NotImplemented
@@ -192,7 +194,7 @@ class Error(object):
 
     __name__ = None
     __parent__ = None
-    
+
     def __init__(self, message=u''):
         self.message = message
 
