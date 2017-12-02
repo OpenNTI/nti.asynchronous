@@ -157,7 +157,7 @@ class Job(object):
         except Exception as e:  # pylint: disable=broad-except
             self._status_id = FAILED_ID
             self._error = self.error_adapter(sys.exc_info(), None) \
-                or self.error_adapter(e, None)
+                       or self.error_adapter(e, None)
             logger.exception("Job (%s) execution failed", self)
         finally:
             self._active_end = datetime.datetime.utcnow()
