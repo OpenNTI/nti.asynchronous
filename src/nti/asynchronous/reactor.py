@@ -20,7 +20,7 @@ from zope import component
 from zope import interface
 
 from zope.cachedescriptors.property import Lazy
-from zope.cachedescriptors.property import CachedProperty
+from zope.cachedescriptors.property import readproperty
 
 from zope.component import ComponentLookupError
 
@@ -135,7 +135,7 @@ class QueuesMixin(object):
         self.queue_interface = queue_interface
         self.queue_names = list(queue_names or ())
 
-    @CachedProperty('queue_names')
+    @readproperty
     def queues(self):
         queues = tuple(component.getUtility(self.queue_interface, name=x)
                        for x in set(self.queue_names))
@@ -275,10 +275,10 @@ class AsyncFailedReactor(AsyncReactor):
         RunnerMixin.__init__(self, site_names, **kwargs)
         QueuesMixin.__init__(self, queue_names, queue_interface)
 
-    @CachedProperty('queue_names')
+    @readproperty
     def queues(self):
-        queues = [component.getUtility(self.queue_interface, name=x).get_failed_queue()
-                  for x in set(self.queue_names)]
+        queues = tuple(component.getUtility(self.queue_interface, name=x).get_failed_queue()
+                       for x in set(self.queue_names))
         return queues
 
     def __iter__(self):
