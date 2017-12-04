@@ -25,10 +25,6 @@ from nti.asynchronous.reactor import AsyncReactor
 from nti.asynchronous.tests import AsyncTestCase
 
 
-def mock_work():
-    return 42
-
-
 class TestReactor(AsyncTestCase):
 
     def setUp(self):
@@ -67,7 +63,7 @@ class TestReactor(AsyncTestCase):
         assert_that(job.has_failed(), is_(False))
         assert_that(job.is_running(), is_(False))
         assert_that(job.has_completed(), is_(True))
-        
+
         self.reactor.current_job = None
         job = self.reactor._get_job()
         assert_that(job, none())

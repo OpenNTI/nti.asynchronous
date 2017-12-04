@@ -22,6 +22,9 @@ from nti.asynchronous.redis_queue import RedisQueue
 
 from nti.asynchronous.tests import AsyncTestCase
 
+from nti.asynchronous.threadlocal import manager
+from nti.asynchronous.threadlocal import get_current_callable
+
 from nti.transactions import transactions
 
 
@@ -35,6 +38,14 @@ def _pass_job():
 
 def _fail_job():
     raise Exception()
+
+
+def _doom_job():
+    transaction.doom()
+
+
+def _manager_job():
+    assert_that(get_current_callable(), not_none())
 
 
 class mock_db_trans(object):
@@ -59,7 +70,7 @@ class mock_db_trans(object):
             except Exception:
                 transaction.abort()
                 raise
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             # Don't let our exception override the original exception
             if not body_raised:
                 raise
@@ -77,8 +88,9 @@ class TestJobs(AsyncTestCase):
             queue.put(create_job(_pass_job))
             queue.put(create_job(_fail_job))
             queue.put(create_job(_pass_job))
+            queue.put(create_job(_doom_job))
 
-        assert_that(queue, has_length(3))
+        assert_that(queue, has_length(4))
 
         # Simple job
         with mock_db_trans():
@@ -86,7 +98,7 @@ class TestJobs(AsyncTestCase):
             assert_that(claimed, not_none())
             claimed()
 
-        assert_that(queue, has_length(2))
+        assert_that(queue, has_length(3))
 
         # Normal erring job
         with mock_db_trans():
@@ -94,7 +106,7 @@ class TestJobs(AsyncTestCase):
             assert_that(claimed, not_none())
             claimed()
 
-        assert_that(queue, has_length(1))
+        assert_that(queue, has_length(2))
 
         def _fail():
             raise Exception()
@@ -106,11 +118,23 @@ class TestJobs(AsyncTestCase):
                 assert_that(claimed, not_none())
                 claimed()
 
-                transactions.do(target=self,
-                                call=_fail,
-                                args=None)
-        except Exception:
+                transactions.do_near_end(call=_fail)
+        except Exception:  # pylint: disable=broad-except
             pass
 
         # Job failed and is back on queue
+        assert_that(queue, has_length(1))
+
+        with mock_db_trans():
+            claimed = queue.claim()
+            claimed()
+
+        with mock_db_trans():
+            queue.put(create_job(_manager_job))
+
+        with mock_db_trans():
+            claimed = queue.claim()
+            claimed()
+
         assert_that(queue, has_length(0))
+        manager.clear()

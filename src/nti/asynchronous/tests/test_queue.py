@@ -9,6 +9,7 @@ from __future__ import absolute_import
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
+from hamcrest import none
 from hamcrest import is_in
 from hamcrest import equal_to
 from hamcrest import has_length
@@ -19,6 +20,8 @@ from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
 import operator
+
+from nti.asynchronous import get_job_queue
 
 from nti.asynchronous.interfaces import IQueue
 
@@ -39,6 +42,7 @@ class TestQueue(AsyncTestCase):
         queue = Queue()
         assert_that(queue, validly_provides(IQueue))
         assert_that(queue, verifiably_provides(IQueue))
+        assert_that(get_job_queue(), is_(none()))
 
     def test_empty(self):
         queue = Queue()
@@ -56,6 +60,7 @@ class TestQueue(AsyncTestCase):
         assert_that(queue.keys(), has_length(1))
         assert_that(job, has_property('__parent__', queue))
         claimed = queue.claim()
+        claimed()
         assert_that(claimed, equal_to(job))
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
@@ -85,7 +90,6 @@ class TestQueue(AsyncTestCase):
 
         try:
             queue.remove(job4)
-            self.fail()
         except LookupError:
             pass
 
