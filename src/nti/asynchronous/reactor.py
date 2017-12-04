@@ -98,7 +98,7 @@ class RunnerMixin(object):
     @Lazy
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
-        if self.site_names:
+        if self.site_names:  # pragma: no cover
             result = partial(result, site_names=self.site_names)
         return result
 
@@ -251,7 +251,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                     if self.is_running():
                         if not self.is_paused() and not self.process_job():
                             break
-                except KeyboardInterrupt:
+                except KeyboardInterrupt:  # pragma: no cover
                     break
         finally:
             self.stop()
