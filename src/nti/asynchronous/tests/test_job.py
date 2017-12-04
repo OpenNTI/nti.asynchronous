@@ -36,7 +36,7 @@ from nti.asynchronous.tests import AsyncTestCase
 
 
 def call():
-    return u'my result'
+    return 'function result'
 
 
 class Demo(object):
@@ -67,15 +67,32 @@ def current_job():
 
 class TestJob(AsyncTestCase):
 
+    def _call(self):
+        return 'method result'
+
     def test_job(self):
         job = create_job(call)
         assert_that(job, validly_provides(IJob))
         assert_that(job, verifiably_provides(IJob))
+        assert_that(job, has_property('queue', is_(none())))
+        assert_that(hash(job), is_not(none()))
 
     def test_call(self):
         job = Job(call)
         result = job()
-        assert_that(result, is_('my result'))
+        assert_that(result, is_('function result'))
+
+        job = Job(self._call)
+        result = job()
+        assert_that(result, is_('method result'))
+
+        job = Job(len)
+        result = job([1])
+        assert_that(result, is_(1))
+
+        job_call = Job(call)
+        job = Job(job_call)
+        assert_that(result, is_(1))
 
     def test_adapter(self):
         job = IJob(call, None)
@@ -94,7 +111,7 @@ class TestJob(AsyncTestCase):
         assert_that(job, has_property('result', is_(24)))
 
     def test_multiply(self):
-        job = Job(multiply, 5, 3)
+        job = Job(multiply, 5, 3, 1)
         job()
         assert_that(job, has_property('result', is_(15)))
 
@@ -113,6 +130,7 @@ class TestJob(AsyncTestCase):
         except Exception:
             error = IError(sys.exc_info())
         assert_that(error, is_not(none()))
+        assert_that(str(error), is_not(none()))
         assert_that(error,
                     has_property('message', has_length(greater_than(1))))
 

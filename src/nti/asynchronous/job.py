@@ -120,15 +120,15 @@ class Job(object):
         if isinstance(value, types.MethodType):
             self._callable_root = six.get_method_self(value)
             self._callable_name = value.__name__
-        elif (isinstance(value, types.BuiltinMethodType) and
-              getattr(value, '__self__', None) is not None):
+        elif    isinstance(value, types.BuiltinMethodType) \
+            and getattr(value, '__self__', None) is not None:  # pragma: no cover
             self._callable_root = value.__self__
             self._callable_name = value.__name__
         else:
             self._callable_root, self._callable_name = value, None
 
-        if (    IJob.providedBy(self._callable_root)
-            and self._callable_root.__parent__ is None):
+        if      IJob.providedBy(self._callable_root) \
+            and self._callable_root.__parent__ is None:
             self._callable_root.__parent__ = self
 
     callable = property(_get_callable, _set_callable)
@@ -168,7 +168,7 @@ class Job(object):
         try:
             # pylint: disable=protected-access
             return self is other or (self._id == other._id and self._id)
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             return NotImplemented
 
     def __hash__(self):
