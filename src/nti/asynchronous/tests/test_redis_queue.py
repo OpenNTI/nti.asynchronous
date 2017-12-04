@@ -40,7 +40,7 @@ def mock_work():
 
 
 def multiply(a, b):
-    return a*b
+    return a * b
 
 
 class TestRedisQueue(AsyncTestCase):
@@ -69,6 +69,7 @@ class TestRedisQueue(AsyncTestCase):
         assert_that(claimed, equal_to(job))
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
+        claimed()
         transaction.commit()
 
     def test_operator(self):
@@ -98,7 +99,6 @@ class TestRedisQueue(AsyncTestCase):
 
         try:
             queue.remove(job4)
-            self.fail()
         except NotImplementedError:
             pass
 
@@ -108,6 +108,7 @@ class TestRedisQueue(AsyncTestCase):
         assert_that(queue, has_length(4))
         assert_that(queue.keys(), has_length(4))
         assert_that(job7.id, is_in(queue))
+        job7()
 
         queue.empty()
         assert_that(queue, has_length(0))

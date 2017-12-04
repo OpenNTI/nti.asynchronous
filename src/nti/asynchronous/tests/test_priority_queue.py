@@ -63,6 +63,7 @@ class TestPriorityQueue(AsyncTestCase):
         assert_that(sorted(data), is_([b'aizen', b'ichigo']))
 
         job = queue.claim()
+        job()
         assert_that(job, is_(ichigo))
         assert_that('ichigo', is_not(is_in(queue)))
 

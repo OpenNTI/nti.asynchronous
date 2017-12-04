@@ -60,6 +60,7 @@ class TestQueue(AsyncTestCase):
         assert_that(queue.keys(), has_length(1))
         assert_that(job, has_property('__parent__', queue))
         claimed = queue.claim()
+        claimed()
         assert_that(claimed, equal_to(job))
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
@@ -89,7 +90,6 @@ class TestQueue(AsyncTestCase):
 
         try:
             queue.remove(job4)
-            self.fail()
         except LookupError:
             pass
 
