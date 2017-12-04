@@ -9,7 +9,9 @@ entry_points = {
 
 TESTS_REQUIRE = [
     'fakeredis',
+    'fudge',
     'nti.testing',
+    'zope.dottedname',
     'zope.testrunner',
 ]
 

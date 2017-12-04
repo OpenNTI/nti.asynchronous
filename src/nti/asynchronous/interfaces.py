@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+# pylint: disable=inherit-non-class
+
 from zope import interface
 
 from zope.annotation.interfaces import IAttributeAnnotatable
@@ -97,14 +99,27 @@ class IQueue(IBaseQueue, IAttributeAnnotatable):
 
 class IRedisQueue(IBaseQueue):
 
+    # pylint: disable=arguments-differ
     def put(item, use_transactions=True, tail=True):
-        pass
+        """
+        Put an IJob adapted from item into the queue.  Returns IJob.
+        """
 
     def all(unpickle=True):
-        pass
+        """
+        Return all jobs in the queue
+        
+        :param unpickle: Flag to return the jobs as unpickled objects
+        :type unpickle: bool 
+        """
 
     def failed(unpickle=True):
-        pass
+        """
+        Return all failed jobs in the queue
+
+        :param unpickle: Flag to return the failed jobs as unpickled objects
+        :type unpickle: bool 
+        """
 
 
 class IJob(IAttributeAnnotatable, IContained):
@@ -115,23 +130,26 @@ class IJob(IAttributeAnnotatable, IContained):
 
     result = interface.Attribute("The result of the call.")
 
-    callable = interface.Attribute(
-        """The callable object that should be called with *IJob.args and
+    callable = interface.Attribute("""
+        The callable object that should be called with *IJob.args and
         **IJob.kwargs when the IJob is called.  Mutable.""")
 
-    args = interface.Attribute(
-        """a peristent list of the args that should be applied to self.call.
+    args = interface.Attribute("""
+        a peristent list of the args that should be applied to self.call.
         May include persistent objects (though note that, if passing a method
-        is desired, it will typicall need to be wrapped in an IJob).""")
+        is desired, it will typicall need to be wrapped in an IJob).
+        """)
 
-    kwargs = interface.Attribute(
-        """a persistent mapping of the kwargs that should be applied to
+    kwargs = interface.Attribute("""
+        A persistent mapping of the kwargs that should be applied to
         self.call.  May include persistent objects (though note that, if
         passing a method is desired, it will typicall need to be wrapped
-        in an IJob).""")
+        in an IJob).
+        """)
 
-    is_side_effect_free = interface.Attribute(
-        """the job does not change the underlying storage""")
+    is_side_effect_free = interface.Attribute("""
+        The job does not change the underlying storage
+        """)
 
     def __call__(*args, **kwargs):
         """

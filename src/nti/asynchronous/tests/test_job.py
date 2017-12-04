@@ -20,8 +20,10 @@ from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
 import sys
+import pickle
 from io import BytesIO
-from six.moves import cPickle as pickle
+
+from nti.asynchronous import create_job
 
 from nti.asynchronous.interfaces import IJob
 from nti.asynchronous.interfaces import IError
@@ -66,7 +68,7 @@ def current_job():
 class TestJob(AsyncTestCase):
 
     def test_job(self):
-        job = Job(call)
+        job = create_job(call)
         assert_that(job, validly_provides(IJob))
         assert_that(job, verifiably_provides(IJob))
 
