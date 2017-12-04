@@ -11,6 +11,8 @@ from __future__ import absolute_import
 from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_in
+from hamcrest import raises
+from hamcrest import calling
 from hamcrest import equal_to
 from hamcrest import has_length
 from hamcrest import assert_that
@@ -59,12 +61,15 @@ class TestQueue(AsyncTestCase):
         assert_that(job.id, is_in(queue))
         assert_that(queue.keys(), has_length(1))
         assert_that(job, has_property('__parent__', queue))
+
         claimed = queue.claim()
         claimed()
         assert_that(claimed, equal_to(job))
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
         assert_that(queue.keys(), has_length(0))
+        
+        assert_that(queue.discard('key'), is_(False))
 
     def test_operator(self):
         queue = Queue()
@@ -75,6 +80,7 @@ class TestQueue(AsyncTestCase):
         job5 = queue.put(create_job(operator.mul, (42, 1)))
         assert_that(queue, has_length(4))
         assert_that(list(queue), is_([job2, job3, job4, job5]))
+
         claimed = queue.claim()
         assert_that(claimed, equal_to(job2))
 
@@ -117,3 +123,19 @@ class TestQueue(AsyncTestCase):
         emptied = queue.empty()
         assert_that(queue, has_length(0))
         assert_that(emptied, is_(2))
+        
+        assert_that(calling(queue.pull).with_args(-1),
+                    raises(IndexError))
+        
+        assert_that(calling(queue.pull).with_args(10),
+                    raises(IndexError))
+
+        queue.put_failed(job4)
+        assert_that(queue.failed(), has_length(1))
+        
+        # pylint: disable=pointless-statement
+        with self.assertRaises(IndexError):
+            queue[-10]
+        
+        with self.assertRaises(IndexError):
+            queue[10]

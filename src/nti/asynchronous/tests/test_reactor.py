@@ -10,11 +10,17 @@ from __future__ import absolute_import
 
 from hamcrest import is_
 from hamcrest import none
+from hamcrest import is_not
 from hamcrest import not_none
 from hamcrest import has_length
 from hamcrest import assert_that
+from hamcrest import has_property
 
 import operator
+
+from zope import component
+
+from nti.asynchronous.interfaces import IQueue
 
 from nti.asynchronous.job import create_job
 
@@ -25,10 +31,15 @@ from nti.asynchronous.reactor import AsyncReactor
 from nti.asynchronous.tests import AsyncTestCase
 
 
-class TestReactor(AsyncTestCase):
+def _failed():
+    raise Exception()
+
+
+class TestAsyncReactor(AsyncTestCase):
 
     def setUp(self):
-        self.reactor = AsyncReactor()
+        self.reactor = AsyncReactor(trx_sleep=0.1, trx_retries=1,
+                                    max_sleep_time=1, max_range_uniform=1)
         self.reactor.queues = ()
 
     def test_empty(self):
@@ -66,7 +77,14 @@ class TestReactor(AsyncTestCase):
 
         self.reactor.current_job = None
         job = self.reactor._get_job()
-        assert_that(job, none())
+        assert_that(job, is_(none()))
+
+        assert_that(self.reactor.uniform(),
+                    is_not(none()))
+        
+        assert_that(self.reactor.execute_job(), is_(False))
+
+        self.reactor.perform_job(create_job(_failed), q1)
 
     def test_boundary(self):
         q1 = Queue()
@@ -116,3 +134,40 @@ class TestReactor(AsyncTestCase):
         job = self.reactor._get_job()
         assert_that(job, not_none())
         assert_that(job, is_(job5))
+
+    def test_coverage_run(self):
+        queue = Queue()
+        reactor = AsyncReactor(trx_sleep=0.1, poll_interval=0.1)
+        reactor.queues = [queue]
+        queue.put(create_job(_failed))
+        reactor.run()
+        
+    def test_pause_resume(self):
+        reactor = AsyncReactor()
+        reactor.pause()
+        assert_that(reactor.is_paused(), is_(True))
+        reactor.resume()
+        assert_that(reactor.is_paused(), is_(False))
+        
+    def test_queues(self):
+        q1 = Queue()
+        q2 = Queue()
+        gsm = component.getGlobalSiteManager()
+        gsm.registerUtility(q1, IQueue, 'q1')
+        gsm.registerUtility(q2, IQueue, 'q2')
+        
+        reactor = AsyncReactor(queue_names=('q1',))
+        assert_that(reactor, 
+                    has_property('queues', has_length(1)))
+
+        reactor.add_queues('q2')
+        assert_that(reactor, 
+                    has_property('queues', has_length(2)))
+        
+        for _ in range(2):
+            reactor.remove_queues('q1')
+            assert_that(reactor, 
+                        has_property('queues', has_length(1)))
+        
+        gsm.unregisterUtility(q1, IQueue, 'q1')
+        gsm.unregisterUtility(q2, IQueue, 'q2')
