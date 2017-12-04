@@ -73,12 +73,14 @@ class Queue(Persistent):
             for (q_index, q_next) in q:
                 yield q_pop, q_index, q_next
 
-    def _discard(self, key):
+    def discard(self, key):
         try:
             self._jobs.remove(key)
+            return True
         except KeyError:
-            pass
-
+            return False
+    _discard = discard
+    
     def pull(self, index=0):
         length = len(self)
         if index < 0:
@@ -94,7 +96,6 @@ class Queue(Persistent):
                 self._discard(job.id)
                 self._length.change(-1)
                 return job
-        assert False, 'programmer error: the length appears to be incorrect.'
 
     def remove(self, item):
         for pop, ix, job in self._iter():
@@ -115,7 +116,6 @@ class Queue(Persistent):
             self._discard(job.id)
             self._length.change(-1)
             return job
-        return default
 
     def all(self):
         result = []
@@ -161,7 +161,6 @@ class Queue(Persistent):
         for i, (_, _, job) in enumerate(self._iter()):
             if i == index:
                 return job
-        assert False, 'programmer error: the length appears to be incorrect.'
 
     def keys(self):
         return list(self._jobs)
