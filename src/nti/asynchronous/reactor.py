@@ -14,12 +14,9 @@ import logging
 from threading import Thread
 from functools import partial
 
-import gevent
-
 from zope import component
 from zope import interface
 
-from zope.cachedescriptors.property import Lazy
 from zope.cachedescriptors.property import readproperty
 
 from zope.component import ComponentLookupError
@@ -165,6 +162,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
 
     processor = None
     poll_interval = None
+    restore_poll_interval = False
 
     def __init__(self, queue_names=(), poll_interval=2, exitOnError=True,
                  queue_interface=IQueue, site_names=(), **kwargs):
@@ -183,11 +181,15 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         notify(ReactorStopped(self))
     halt = stop
 
+    @readproperty
+    def sleep_time(self):  # pylint: disable=method-hidden
+        return self.poll_interval
+
     def _get_job(self):
         # if current_job is active then it means
         # we are in a retry from the transaction runner
         if self.current_job is not None:
-            logger.warn("Retrying %s", self.current_job.id)
+            logger.warning("Retrying %s", self.current_job.id)
             return self.current_job
         # These are basically priority queues.
         # We should start at the beginning each time.
@@ -212,18 +214,19 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         try:
             # Should we pull jobs outside of transaction to
             # avoid race conditions?
-            # pylint: disable=unexpected-keyword-arg,too-many-function-args,not-callable
+            # pylint: disable=unexpected-keyword-arg
+            # pylint: disable=too-many-function-args,not-callable
             if self.transaction_runner(self.execute_job,
                                        sleep=self.trx_sleep,
                                        retries=self.trx_retries):
                 # Do not sleep if we have work to do, especially since
                 # we may be reading from multiple queues.
-                self.poll_interval = 0
+                restore = self.restore_poll_interval
+                self.sleep_time = self.poll_interval if restore else 0
             else:
-                self.poll_interval += self.uniform()
-                self.poll_interval = min(self.poll_interval,
-                                         self.max_sleep_time)
-        except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
+                self.sleep_time += self.uniform()
+                self.sleep_time = min(self.sleep_time, self.max_sleep_time)
+        except (ComponentLookupError, AttributeError, TypeError) as e:
             logger.error('Error while processing job. Queue=[%s], error=%s',
                          self.current_queue, e)
             result = False
@@ -241,13 +244,13 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         return result
     processJob = process_job
 
-    def run(self, sleep=gevent.sleep):
+    def run(self, sleep=time.sleep):
         self.start()
         try:
             logger.info('Starting reactor for queues=(%s)', self.queue_names)
             while self.is_running():
                 try:
-                    sleep(self.poll_interval)
+                    sleep(self.sleep_time)
                     if self.is_running():
                         if not self.is_paused() and not self.process_job():
                             break
@@ -289,7 +292,7 @@ class AsyncFailedReactor(AsyncReactor):
         while job is not None:
             yield job
             job = queue.claim()
-            if job == original_job: # pragma: no cover
+            if job == original_job:  # pragma: no cover
                 # Stop when we reach the start
                 break
 
@@ -328,7 +331,8 @@ class AsyncFailedReactor(AsyncReactor):
             try:
                 # set proper queue
                 self.current_queue = queue
-                # pylint: disable=unexpected-keyword-arg,too-many-function-args,not-callable
+                # pylint: disable=unexpected-keyword-arg
+                # pylint: disable=too-many-function-args,not-callable
                 count = self.transaction_runner(self.execute_jobs,
                                                 retries=3,
                                                 sleep=1)
@@ -340,7 +344,7 @@ class AsyncFailedReactor(AsyncReactor):
                 self.current_job = self.current_queue = self.current_jobs = None
     process_job = process_jobs
 
-    def run(self, unused_sleep=gevent.sleep):
+    def run(self, unused_sleep=time.sleep):
         self.start()
         try:
             logger.info('Starting reactor for failed jobs in queues=(%s)',
@@ -354,74 +358,37 @@ class AsyncFailedReactor(AsyncReactor):
     __call__ = run
 
 
-class SingleQueueReactor(RunnerMixin, ReactorMixin):
+class SingleQueueReactor(AsyncReactor):
 
-    def __init__(self, queue_name, queue_interface=IQueue,
-                 site_names=(), poll_interval=3, **kwargs):
-        RunnerMixin.__init__(self, site_names, **kwargs)
-        self.queue_name = queue_name
-        self.poll_interval = poll_interval
-        self.queue_interface = queue_interface
+    restore_poll_interval = True
 
-    @Lazy
+    def __init__(self, queue_name, **kwargs):
+        kwargs['queue_names'] = [queue_name]
+        AsyncReactor.__init__(self, **kwargs)
+
+    @property
     def queue(self):
-        return component.getUtility(self.queue_interface, name=self.queue_name)
-    current_queue = queue
+        # pylint: disable=unsubscriptable-object
+        return self.queues[0]
 
-    def execute_job(self):
-        # if current_job is active then it means
-        # we are in a retry from the transaction runner
-        if self.current_job is not None:
-            return self.current_job
-        # pylint: disable=no-member
-        job = self.queue.claim()
-        if job is not None:
-            return self.perform_job(job, self.queue)
-        return False
+    @property
+    def queue_name(self):
+        # pylint: disable=unsubscriptable-object
+        return self.queue_names[0]
 
-    def run(self, sleep=time.sleep):
-        self.start()
-        try:
-            sleep_time = self.poll_interval
-            logger.info('Starting reactor queue=(%s)', self.queue_name)
-            while self.is_running():
-                try:
-                    try:
-                        runner = self.transaction_runner
-                        # pylint: disable=unexpected-keyword-arg,too-many-function-args
-                        if not runner(self.execute_job,
-                                      sleep=self.trx_sleep,
-                                      retries=self.trx_retries):
-                            # sleep some random time
-                            sleep_time += self.uniform()
-                            sleep_time = min(sleep_time,
-                                             self.max_sleep_time)
-                            sleep(sleep_time)
-                        else:
-                            sleep_time = self.poll_interval
-                    except (ComponentLookupError,
-                            AttributeError,
-                            TypeError,
-                            StandardError) as e:
-                        logger.error('Error while processing job. Queue=[%s], error=%s',
-                                     self.queue, e)
-                    except (ConflictError,
-                            UnableToAcquireCommitLock,
-                            ZODBUnableToAcquireCommitLock) as e:
-                        logger.error('ConflictError while pulling job from Queue=[%s], error=%s',
-                                     self.queue, e)
-                    except Exception:  # pylint: disable=broad-except
-                        logger.exception('Cannot execute job.')
-                    finally:
-                        # Signal we need to get a new job
-                        self.current_job = None
-                except KeyboardInterrupt:
-                    break
-        finally:
-            self.stop()
-            logger.info('Exiting reactor. queue=(%s)', self.queue_name)
-    __call__ = run
+    @property
+    def current_queue(self):
+        return self.queue
 
+    @current_queue.setter
+    def current_queue(self, unused_v):
+        pass
+
+    def add_queues(self, *unused_queues):
+        pass
+
+    def remove_queues(self, *unused_queues):
+        pass
 
 @interface.implementer(IAsyncReactor)
 class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
@@ -441,7 +408,26 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         notify(ReactorStopped(self))
     halt = stop
 
+    def single_queue_reactor(self, name):
+        target = SingleQueueReactor(name,
+                                    exitOnError=False,
+                                    site_names=self.site_names,
+                                    queue_interface=self.queue_interface,
+                                    # transaction runner
+                                    trx_sleep=self.trx_sleep,
+                                    trx_retries=self.trx_retries,
+                                    # process interval
+                                    poll_interval=self.poll_interval,
+                                    max_sleep_time=self.max_sleep_time,
+                                    max_range_uniform=self.max_range_uniform)
+        return target
+
+    def stop_reactors(self, threads):
+        for thread in threads:
+            thread.reactor.stop()
+
     def run(self, sleep=time.sleep):
+        # pylint: disable=attribute-defined-outside-init
         self.start()
         threads = []
         try:
@@ -449,30 +435,25 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                         set(self.queue_names))
             # create threads
             for name in self.queue_names:
-                target = SingleQueueReactor(name,
-                                            self.queue_interface,
-                                            self.site_names,
-                                            self.poll_interval,
-                                            trx_sleep=self.trx_sleep,
-                                            trx_retries=self.trx_retries,
-                                            max_sleep_time=self.max_sleep_time,
-                                            max_range_uniform=self.max_range_uniform)
-                # pylint: disable=attribute-defined-outside-init
+                target = self.single_queue_reactor(name)
                 target.__parent__ = self
                 thread = Thread(target=target, name=name)
                 thread.daemon = True
+                thread.reactor = target
                 thread.start()
                 threads.append(thread)
             # wait till signal
             while self.is_running():
                 try:
                     sleep(0.2)
-                except KeyboardInterrupt:
+                except KeyboardInterrupt:  # pragma: no cover
                     break
         finally:
+            self.stop_reactors(threads)
             self.stop()
             logger.warn('Exiting reactor. queue=(%s)',
                         set(self.queue_names))
+        return threads
     __call__ = run
 
 

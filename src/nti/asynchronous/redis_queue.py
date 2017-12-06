@@ -177,7 +177,7 @@ class RedisQueue(QueueMixin):
             self._redis.evalsha(hash_script, 2, self._name,
                                 self._hash, data, jid)
         except NoScriptError:
-            logger.warn("script not cached.")
+            logger.warning("script not cached.")
             self._redis.eval(script, 2, self._name, self._hash, data, jid)
 
     def _do_put_job_pipe(self, pipe, data, tail, jid):
@@ -248,8 +248,8 @@ class RedisQueue(QueueMixin):
         # notify if the transaction aborts
         def after_commit_or_abort(success=False):
             if not success and not job.is_side_effect_free:
-                logger.warn("Transaction abort for [%s] (%s)",
-                            self._name, job.id)
+                logger.warning("Transaction abort for [%s] (%s)",
+                               self._name, job.id)
                 notify(JobAbortedEvent(job))
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job
@@ -363,8 +363,8 @@ class PriorityQueue(QueueMixin):
         # make sure we put the job back if the transaction fails
         def after_commit_or_abort(success=False):
             if not success and not job.is_side_effect_free:
-                logger.warn("Transaction abort for [%s] (%s)",
-                            self._name, job.id)
+                logger.warning("Transaction abort for [%s] (%s)",
+                               self._name, job.id)
                 notify(JobAbortedEvent(job))
         transaction.get().addAfterCommitHook(after_commit_or_abort)
         return job

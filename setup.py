@@ -56,7 +56,6 @@ setup(
         'nti.transactions',
         'nti.zodb',
         'BTrees',
-        'gevent',
         'persistent',
         'redis',
         'six',

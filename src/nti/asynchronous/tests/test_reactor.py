@@ -5,8 +5,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-# disable: accessing protected members, too many methods
-# pylint: disable=protected-access,too-many-public-methods,too-many-function-args
+# pylint: disable=protected-access
+# pylint: disable=too-many-public-methods,too-many-function-args
 
 from hamcrest import is_
 from hamcrest import none
@@ -16,6 +16,7 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_property
 
+import time
 import operator
 
 import fakeredis
@@ -30,7 +31,9 @@ from nti.asynchronous.job import create_job
 from nti.asynchronous.queue import Queue
 
 from nti.asynchronous.reactor import AsyncReactor
+from nti.asynchronous.reactor import ThreadedReactor
 from nti.asynchronous.reactor import AsyncFailedReactor
+from nti.asynchronous.reactor import SingleQueueReactor
 
 from nti.asynchronous.redis_queue import QueueMixin
 from nti.asynchronous.redis_queue import RedisQueue
@@ -205,17 +208,17 @@ class TestAsyncReactor(AsyncTestCase):
 
         # no trx runner
         assert_that(reactor.process_job(), is_(False))
-        assert_that(reactor, has_property('poll_interval', is_(0.1)))
+        assert_that(reactor, has_property('sleep_time', is_(0.1)))
 
         trx_runner = MockTrxRunner()
         gsm.registerUtility(trx_runner, ISiteTransactionRunner)
         assert_that(reactor.process_job(), is_(True))
-        assert_that(reactor, has_property('poll_interval', is_(0)))
+        assert_that(reactor, has_property('sleep_time', is_(0)))
 
         trx_runner.result = False
         assert_that(reactor.process_job(), is_(True))
         assert_that(queue, has_length(0))
-        assert_that(reactor, has_property('poll_interval', is_not(0)))
+        assert_that(reactor, has_property('sleep_time', is_not(0)))
         gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
 
         trx_runner = CommitLockTrxRunner()
@@ -288,3 +291,48 @@ class TestAsyncFailedReactor(AsyncTestCase):
         assert_that(reactor.execute_jobs(q1.get_failed_queue(), use_transactions=False),
                     is_(1))
         assert_that(q1.get_failed_queue(), has_length(1))
+
+        gsm.unregisterUtility(q1, IQueue, 'q1')
+
+
+class TestSingleQueueReactor(AsyncTestCase):
+
+    def test_reactor(self):
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        gsm = component.getGlobalSiteManager()
+        gsm.registerUtility(q1, IQueue, 'q1')
+
+        reactor = SingleQueueReactor('q1')
+        assert_that(reactor, has_property('queue', is_(q1)))
+        assert_that(reactor, has_property('current_queue', is_(q1)))
+        assert_that(reactor, has_property('queue_name', is_('q1')))
+
+        # no ops
+        reactor.add_queues(q1)
+        assert_that(reactor, has_property('queues', has_length(1)))
+
+        reactor.remove_queues(q1)
+        assert_that(reactor, has_property('queues', has_length(1)))
+
+        reactor.current_queue = object()  # no op
+        assert_that(reactor, has_property('current_queue', is_(q1)))
+
+        gsm.unregisterUtility(q1, IQueue, 'q1')
+
+
+class TestThreadedReactor(AsyncTestCase):
+
+    def test_reactor(self):
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        gsm = component.getGlobalSiteManager()
+        gsm.registerUtility(q1, IQueue, 'q1')
+
+        def fake_sleep(*unused_args):
+            time.sleep(1)
+            raise KeyboardInterrupt()
+
+        reactor = ThreadedReactor(['q1'], poll_interval=0.1)
+        threads = reactor.run(fake_sleep)
+        assert_that(threads, has_length(1))
+
+        gsm.unregisterUtility(q1, IQueue, 'q1')
