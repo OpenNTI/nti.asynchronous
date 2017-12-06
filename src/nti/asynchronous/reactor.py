@@ -95,7 +95,7 @@ class RunnerMixin(object):
                     queue, job.id, job.status)
         return True
 
-    @Lazy
+    @property
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
         if self.site_names:  # pragma: no cover
@@ -212,7 +212,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         try:
             # Should we pull jobs outside of transaction to
             # avoid race conditions?
-            # pylint: disable=unexpected-keyword-arg,too-many-function-args
+            # pylint: disable=unexpected-keyword-arg,too-many-function-args,not-callable
             if self.transaction_runner(self.execute_job,
                                        sleep=self.trx_sleep,
                                        retries=self.trx_retries):
@@ -325,7 +325,7 @@ class AsyncFailedReactor(AsyncReactor):
         for queue in self.queues:
             try:
                 self.current_queue = queue  # set proper queue
-                # pylint: disable=unexpected-keyword-arg,too-many-function-args
+                # pylint: disable=unexpected-keyword-arg,too-many-function-args,not-callable
                 count = self.transaction_runner(self.execute_job,
                                                 retries=3,
                                                 sleep=1)
