@@ -6,7 +6,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=protected-access,too-many-public-methods,too-many-function-args
 
 from hamcrest import is_
 from hamcrest import none
@@ -18,6 +18,8 @@ from hamcrest import has_property
 
 import operator
 
+import fakeredis
+
 from zope import component
 from zope import interface
 
@@ -28,6 +30,10 @@ from nti.asynchronous.job import create_job
 from nti.asynchronous.queue import Queue
 
 from nti.asynchronous.reactor import AsyncReactor
+from nti.asynchronous.reactor import AsyncFailedReactor
+
+from nti.asynchronous.redis_queue import QueueMixin
+from nti.asynchronous.redis_queue import RedisQueue
 
 from nti.asynchronous.tests import AsyncTestCase
 
@@ -47,8 +53,12 @@ def _mock_job():
 @interface.implementer(ISiteTransactionRunner)
 class MockTrxRunner(object):
 
+    def __init__(self, result=True):
+        self.result = result
+
     def __call__(self, func, *unused_args, **unused_kwars):
-        return func()
+        func()
+        return self.result
 
 
 @interface.implementer(ISiteTransactionRunner)
@@ -171,8 +181,6 @@ class TestAsyncReactor(AsyncTestCase):
         reactor.queues = [queue]
         queue.put(create_job(_mock_job))
         reactor.run()
-        reactor.current_job = create_job(_mock_job)
-        reactor.execute_job()
 
     def test_pause_resume(self):
         reactor = AsyncReactor()
@@ -187,6 +195,11 @@ class TestAsyncReactor(AsyncTestCase):
         queue = Queue()
         reactor = AsyncReactor(trx_sleep=0.1, poll_interval=0.1)
         reactor.queues = [queue]
+
+        # coverage
+        reactor.current_job = create_job(_mock_job)
+        reactor.execute_job()
+
         queue.put(create_job(_mock_job))
         queue.put(create_job(_mock_job))
 
@@ -199,8 +212,10 @@ class TestAsyncReactor(AsyncTestCase):
         assert_that(reactor.process_job(), is_(True))
         assert_that(reactor, has_property('poll_interval', is_(0)))
 
+        trx_runner.result = False
         assert_that(reactor.process_job(), is_(True))
         assert_that(queue, has_length(0))
+        assert_that(reactor, has_property('poll_interval', is_not(0)))
         gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
 
         trx_runner = CommitLockTrxRunner()
@@ -214,6 +229,10 @@ class TestAsyncReactor(AsyncTestCase):
         gsm.registerUtility(trx_runner, ISiteTransactionRunner)
         assert_that(reactor.process_job(), is_(False))
         gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
+
+        reactor.transaction_runner = ExceptionTrxRunner()
+        queue.put(create_job(_mock_job))
+        reactor.run()
 
     def test_queues(self):
         q1 = Queue()
@@ -237,3 +256,35 @@ class TestAsyncReactor(AsyncTestCase):
 
         gsm.unregisterUtility(q1, IQueue, 'q1')
         gsm.unregisterUtility(q2, IQueue, 'q2')
+
+
+class TestAsyncFailedReactor(AsyncTestCase):
+
+    def test_queues(self):
+        q1 = QueueMixin(None, None)
+        gsm = component.getGlobalSiteManager()
+        gsm.registerUtility(q1, IQueue, 'q1')
+
+        reactor = AsyncFailedReactor(queue_names=('q1',))
+        assert_that(reactor,
+                    has_property('queues', has_length(1)))
+
+        gsm.unregisterUtility(q1, IQueue, 'q1')
+
+    def test_process_jobs(self):
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        gsm = component.getGlobalSiteManager()
+        gsm.registerUtility(q1, IQueue, 'q1')
+        q1.put_failed(create_job(_mock_job), False)
+        q1.put_failed(create_job(_mock_job), False)
+
+        reactor = AsyncFailedReactor(queue_names=('q1',))
+        reactor.transaction_runner = MockTrxRunner()
+        reactor.run()
+        assert_that(q1.get_failed_queue(), has_length(0))
+
+        q1.put_failed(create_job(_mock_job), False)
+        q1.put_failed(create_job(_failed), False)
+        assert_that(reactor.execute_jobs(q1.get_failed_queue(), use_transactions=False),
+                    is_(1))
+        assert_that(q1.get_failed_queue(), has_length(1))
