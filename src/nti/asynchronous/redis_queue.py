@@ -97,8 +97,8 @@ class QueueMixin(object):
         assert IJob.providedBy(result)
         return result
 
-    def put_failed(self, item):
-        self._failed.put(item)
+    def put_failed(self, item, *args, **kwargs):
+        self._failed.put(item, *args, **kwargs)
     putFailed = put_failed
 
     def get_failed_queue(self):
