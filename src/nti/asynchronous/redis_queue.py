@@ -68,7 +68,7 @@ class QueueMixin(object):
         self._do_put_job(*args, **kwargs)
         duration = time.time() - t0
         if duration > LONG_PUSH_DURATION_IN_SECS:
-            logger.warn("Slow running redis push (%ss)", duration)
+            logger.warning("Slow running redis push (%s)", duration)
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
         raise NotImplementedError()
