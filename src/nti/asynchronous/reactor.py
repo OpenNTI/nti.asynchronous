@@ -453,6 +453,7 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
             self.stop()
             logger.warn('Exiting reactor. queue=(%s)',
                         set(self.queue_names))
+        return threads
     __call__ = run
 
 
