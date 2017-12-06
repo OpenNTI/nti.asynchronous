@@ -11,11 +11,8 @@ from __future__ import absolute_import
 import time
 import zlib
 from io import BytesIO
-from hashlib import sha1
 from datetime import datetime
 from six.moves import cPickle as pickle
-
-from redis.exceptions import NoScriptError  # pylint: disable=import-error,no-name-in-module
 
 import transaction
 
@@ -35,7 +32,6 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = u'nti/async/jobs'
 
-USE_LUA = False
 LONG_PUSH_DURATION_IN_SECS = 5
 
 logger = __import__('logging').getLogger(__name__)
@@ -137,24 +133,6 @@ class QueueMixin(object):
         return bool(len(self))
 
 
-TAIL_PUT_SCRIPT = b"""
-    redis.call("rpush", KEYS[1], ARGV[1])
-    redis.call("hset", KEYS[2], ARGV[2], '1')
-"""
-TAIL_PUT_SCRIPT_HASH = sha1(TAIL_PUT_SCRIPT).hexdigest()
-
-HEAD_PUT_SCRIPT = b"""
-    redis.call("lpush", KEYS[1], ARGV[1])
-    redis.call("hset", KEYS[2], ARGV[2], '1')
-"""
-HEAD_PUT_SCRIPT_HASH = sha1(HEAD_PUT_SCRIPT).hexdigest()
-
-LPOP_SCRIPT = b"""
-    return redis.call("lpop", KEYS[1])
-"""
-LPOP_SCRIPT_HASH = sha1(LPOP_SCRIPT).hexdigest()
-
-
 @interface.implementer(IRedisQueue)
 class RedisQueue(QueueMixin):
 
@@ -169,17 +147,6 @@ class RedisQueue(QueueMixin):
                                       job_queue_name=failed_queue_name,
                                       create_failed_queue=False)
 
-    def _do_put_job_lua(self, data, tail, jid):
-        # pylint: disable=no-member
-        try:
-            script = TAIL_PUT_SCRIPT if tail else HEAD_PUT_SCRIPT
-            hash_script = TAIL_PUT_SCRIPT_HASH if tail else HEAD_PUT_SCRIPT_HASH
-            self._redis.evalsha(hash_script, 2, self._name,
-                                self._hash, data, jid)
-        except NoScriptError:
-            logger.warning("script not cached.")
-            self._redis.eval(script, 2, self._name, self._hash, data, jid)
-
     def _do_put_job_pipe(self, pipe, data, tail, jid):
         if tail:
             pipe.rpush(self._name, data)
@@ -190,13 +157,7 @@ class RedisQueue(QueueMixin):
         pipe.execute()
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
-        if USE_LUA:
-            try:
-                self._do_put_job_lua(data, tail, jid)
-            except AttributeError:
-                self._do_put_job_pipe(pipe, data, tail, jid)
-        else:
-            self._do_put_job_pipe(pipe, data, tail, jid)
+        self._do_put_job_pipe(pipe, data, tail, jid)
 
     def all(self, unpickle=True):
         # pylint: disable=no-member
@@ -212,27 +173,13 @@ class RedisQueue(QueueMixin):
         # jobs are pickled
         raise NotImplementedError()
 
-    def _do_claim_lua(self):
-        # pylint: disable=no-member
-        try:
-            result = self._redis.evalsha(LPOP_SCRIPT_HASH, 1, self._name)
-        except NoScriptError:
-            result = self._redis.eval(LPOP_SCRIPT, 1, self._name)
-        return result
-
     def _do_claim_client(self):
         # pylint: disable=no-member
         result = self._redis.lpop(self._name)
         return result
 
     def _do_claim(self):
-        if USE_LUA:
-            try:
-                return self._do_claim_lua()
-            except AttributeError:
-                return self._do_claim_client()
-        else:
-            return self._do_claim_client()
+        return self._do_claim_client()
 
     def claim(self, default=None):
         # pylint: disable=no-member
@@ -281,18 +228,6 @@ class RedisQueue(QueueMixin):
 
 Queue = RedisQueue  # alias
 
-
-CLAIM_SCRIPT = b"""
-    local x = redis.call("zrevrange", KEYS[1], 0, 0)
-    if x[1] == nil then
-        return nil
-    else
-        redis.call("zrem", KEYS[1], x[1])
-        return x[1]
-    end
-"""
-CLAIM_SCRIPT_HASH = sha1(CLAIM_SCRIPT).hexdigest()
-
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
 
 
@@ -320,14 +255,6 @@ class PriorityQueue(QueueMixin):
         pipe.hset(self._hash, jid, data)
         pipe.execute()
 
-    def _do_claim_lua(self):
-        # pylint: disable=no-member
-        try:
-            result = self._redis.evalsha(CLAIM_SCRIPT_HASH, 1, self._name)
-        except NoScriptError:
-            result = self._redis.eval(CLAIM_SCRIPT, 1, self._name)
-        return result
-
     def _do_claim_client(self):
         # pylint: disable=no-member
         try:
@@ -342,13 +269,7 @@ class PriorityQueue(QueueMixin):
             pass
 
     def _do_claim(self):
-        if USE_LUA:
-            try:
-                return self._do_claim_lua()
-            except AttributeError:
-                return self._do_claim_client()
-        else:
-            return self._do_claim_client()
+        return self._do_claim_client()
 
     def claim(self, default=None):
         jid = self._do_claim()
