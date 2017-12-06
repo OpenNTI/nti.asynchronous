@@ -187,7 +187,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         # if current_job is active then it means
         # we are in a retry from the transaction runner
         if self.current_job is not None:
-            logger.warn("Retrying %s", self.current_job.id)
+            logger.warning("Retrying %s", self.current_job.id)
             return self.current_job
         # These are basically priority queues.
         # We should start at the beginning each time.
@@ -223,7 +223,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                 self.poll_interval += self.uniform()
                 self.poll_interval = min(self.poll_interval,
                                          self.max_sleep_time)
-        except (ComponentLookupError, AttributeError, TypeError, StandardError) as e:
+        except (ComponentLookupError, AttributeError, TypeError) as e:
             logger.error('Error while processing job. Queue=[%s], error=%s',
                          self.current_queue, e)
             result = False
