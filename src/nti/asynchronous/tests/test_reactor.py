@@ -19,6 +19,7 @@ from hamcrest import has_property
 import operator
 
 from zope import component
+from zope import interface
 
 from nti.asynchronous.interfaces import IQueue
 
@@ -30,9 +31,38 @@ from nti.asynchronous.reactor import AsyncReactor
 
 from nti.asynchronous.tests import AsyncTestCase
 
+from nti.site.interfaces import ISiteTransactionRunner
+
+from nti.zodb.interfaces import UnableToAcquireCommitLock
+
 
 def _failed():
     raise Exception()
+
+
+def _mock_job():
+    return
+
+
+@interface.implementer(ISiteTransactionRunner)
+class MockTrxRunner(object):
+
+    def __call__(self, func, *unused_args, **unused_kwars):
+        return func()
+
+
+@interface.implementer(ISiteTransactionRunner)
+class CommitLockTrxRunner(object):
+
+    def __call__(self, *unused_args, **unused_kwars):
+        raise UnableToAcquireCommitLock()
+
+
+@interface.implementer(ISiteTransactionRunner)
+class ExceptionTrxRunner(object):
+
+    def __call__(self, *unused_args, **unused_kwars):
+        raise Exception()
 
 
 class TestAsyncReactor(AsyncTestCase):
@@ -81,7 +111,7 @@ class TestAsyncReactor(AsyncTestCase):
 
         assert_that(self.reactor.uniform(),
                     is_not(none()))
-        
+
         assert_that(self.reactor.execute_job(), is_(False))
 
         self.reactor.perform_job(create_job(_failed), q1)
@@ -139,35 +169,71 @@ class TestAsyncReactor(AsyncTestCase):
         queue = Queue()
         reactor = AsyncReactor(trx_sleep=0.1, poll_interval=0.1)
         reactor.queues = [queue]
-        queue.put(create_job(_failed))
+        queue.put(create_job(_mock_job))
         reactor.run()
-        
+        reactor.current_job = create_job(_mock_job)
+        reactor.execute_job()
+
     def test_pause_resume(self):
         reactor = AsyncReactor()
         reactor.pause()
         assert_that(reactor.is_paused(), is_(True))
         reactor.resume()
         assert_that(reactor.is_paused(), is_(False))
-        
+
+    def test_process_job(self):
+        gsm = component.getGlobalSiteManager()
+
+        queue = Queue()
+        reactor = AsyncReactor(trx_sleep=0.1, poll_interval=0.1)
+        reactor.queues = [queue]
+        queue.put(create_job(_mock_job))
+        queue.put(create_job(_mock_job))
+
+        # no trx runner
+        assert_that(reactor.process_job(), is_(False))
+        assert_that(reactor, has_property('poll_interval', is_(0.1)))
+
+        trx_runner = MockTrxRunner()
+        gsm.registerUtility(trx_runner, ISiteTransactionRunner)
+        assert_that(reactor.process_job(), is_(True))
+        assert_that(reactor, has_property('poll_interval', is_(0)))
+
+        assert_that(reactor.process_job(), is_(True))
+        assert_that(queue, has_length(0))
+        gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
+
+        trx_runner = CommitLockTrxRunner()
+        gsm.registerUtility(trx_runner, ISiteTransactionRunner)
+
+        queue.put(create_job(_mock_job))
+        assert_that(reactor.process_job(), is_(True))
+        gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
+
+        trx_runner = ExceptionTrxRunner()
+        gsm.registerUtility(trx_runner, ISiteTransactionRunner)
+        assert_that(reactor.process_job(), is_(False))
+        gsm.unregisterUtility(trx_runner, ISiteTransactionRunner)
+
     def test_queues(self):
         q1 = Queue()
         q2 = Queue()
         gsm = component.getGlobalSiteManager()
         gsm.registerUtility(q1, IQueue, 'q1')
         gsm.registerUtility(q2, IQueue, 'q2')
-        
+
         reactor = AsyncReactor(queue_names=('q1',))
-        assert_that(reactor, 
+        assert_that(reactor,
                     has_property('queues', has_length(1)))
 
         reactor.add_queues('q2')
-        assert_that(reactor, 
+        assert_that(reactor,
                     has_property('queues', has_length(2)))
-        
+
         for _ in range(2):
             reactor.remove_queues('q1')
-            assert_that(reactor, 
+            assert_that(reactor,
                         has_property('queues', has_length(1)))
-        
+
         gsm.unregisterUtility(q1, IQueue, 'q1')
         gsm.unregisterUtility(q2, IQueue, 'q2')
