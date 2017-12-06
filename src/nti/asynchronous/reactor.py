@@ -95,7 +95,7 @@ class RunnerMixin(object):
                     queue, job.id, job.status)
         return True
 
-    @property
+    @readproperty
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
         if self.site_names:  # pragma: no cover
