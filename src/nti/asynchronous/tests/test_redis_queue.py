@@ -26,13 +26,13 @@ from nti.asynchronous.interfaces import IRedisQueue
 
 from nti.asynchronous.job import create_job
 
-from nti.asynchronous.redis_queue import RedisQueue
+from nti.asynchronous import redis_queue
 
 from nti.asynchronous.tests import AsyncTestCase
 
 
-def _redis():
-    return fakeredis.FakeStrictRedis(db=200)
+def _redis(db=200):
+    return fakeredis.FakeStrictRedis(db=db)
 
 
 def mock_work():
@@ -45,35 +45,44 @@ def multiply(a, b):
 
 class TestRedisQueue(AsyncTestCase):
 
+    def test_mixin(self):
+        queue = redis_queue.QueueMixin(None, None)
+        assert_that(queue.failed(), is_(()))
+        
     def test_model(self):
-        queue = RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, validly_provides(IRedisQueue))
         assert_that(queue, verifiably_provides(IRedisQueue))
 
     def test_empty(self):
-        queue = RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
 
     def test_mockwork(self):
-        queue = RedisQueue(redis=_redis())
-
-        job = queue.put(create_job(mock_work))
-        transaction.commit()
-        assert_that(queue, has_length(1))
-        assert_that(list(queue), is_([job]))
-        assert_that(queue[0], is_(job))
-        assert_that(bool(queue), is_(True))
-
-        claimed = queue.claim()
-        assert_that(claimed, equal_to(job))
-        assert_that(queue, has_length(0))
-        assert_that(list(queue), is_([]))
-        claimed()
-        transaction.commit()
+        old_value = redis_queue.LONG_PUSH_DURATION_IN_SECS
+        try:
+            redis_queue.LONG_PUSH_DURATION_IN_SECS = 0
+            queue = redis_queue.RedisQueue(redis=_redis())
+    
+            job = queue.put(create_job(mock_work))
+            transaction.commit()
+            assert_that(queue, has_length(1))
+            assert_that(list(queue), is_([job]))
+            assert_that(queue[0], is_(job))
+            assert_that(bool(queue), is_(True))
+    
+            claimed = queue.claim()
+            assert_that(claimed, equal_to(job))
+            assert_that(queue, has_length(0))
+            assert_that(list(queue), is_([]))
+            claimed()
+            transaction.commit()
+        finally:
+            redis_queue.LONG_PUSH_DURATION_IN_SECS = old_value
 
     def test_operator(self):
-        queue = RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
 
         job2 = queue.put(create_job(multiply, jargs=(7, 6)))
