@@ -95,7 +95,7 @@ class RunnerMixin(object):
                     queue, job.id, job.status)
         return True
 
-    @property
+    @readproperty
     def transaction_runner(self):
         result = component.getUtility(ISiteTransactionRunner)
         if self.site_names:  # pragma: no cover
@@ -289,17 +289,19 @@ class AsyncFailedReactor(AsyncReactor):
         while job is not None:
             yield job
             job = queue.claim()
-            if job == original_job:
+            if job == original_job: # pragma: no cover
                 # Stop when we reach the start
                 break
 
-    def execute_job(self, job=None):
-        # if current jobs has anythig it means we are in a
+    def execute_jobs(self, queue=None, *args, **kwargs):
+        # set proper queue
+        if queue is not None:
+            self.current_queue = queue
+        # if current jobs has anything it means we are in a
         # retry from the transaction manager
-        if self.current_jobs:
-            jobs_to_process = self.current_jobs
-        else:
-            jobs_to_process = list(self)
+        jobs_to_process = self.current_jobs
+        if not jobs_to_process:
+            self.current_jobs = jobs_to_process = list(self)
         count = 0
         # We do all jobs for a queue inside a single (hopefully manageable)
         # transaction.
@@ -312,21 +314,22 @@ class AsyncFailedReactor(AsyncReactor):
                 logger.error("[%s] Job (%s) failed",
                              self.current_queue,
                              job.id)
-                self.current_queue.putFailed(job)
+                self.current_queue.put_failed(job, *args, **kwargs)
             else:
                 count += 1
             logger.debug("[%s] Job (%s) has been executed",
                          self.current_queue, job.id)
             self.current_job = None
-
         return count
+    execute_job = execute_jobs
 
-    def process_job(self):
+    def process_jobs(self):
         for queue in self.queues:
             try:
-                self.current_queue = queue  # set proper queue
+                # set proper queue
+                self.current_queue = queue
                 # pylint: disable=unexpected-keyword-arg,too-many-function-args,not-callable
-                count = self.transaction_runner(self.execute_job,
+                count = self.transaction_runner(self.execute_jobs,
                                                 retries=3,
                                                 sleep=1)
                 # pylint: disable=protected-access
@@ -335,13 +338,14 @@ class AsyncFailedReactor(AsyncReactor):
             finally:
                 # Signal jobs for next que need to be processed
                 self.current_job = self.current_queue = self.current_jobs = None
+    process_job = process_jobs
 
     def run(self, unused_sleep=gevent.sleep):
         self.start()
         try:
             logger.info('Starting reactor for failed jobs in queues=(%s)',
                         set(self.queue_names))
-            self.process_job()
+            self.process_jobs()
         finally:
             self.stop()
             logger.warn('Exiting reactor. queues=(%s)',
