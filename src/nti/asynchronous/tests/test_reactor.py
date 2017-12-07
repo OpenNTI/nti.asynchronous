@@ -298,7 +298,7 @@ class TestAsyncFailedReactor(AsyncTestCase):
 class TestSingleQueueReactor(AsyncTestCase):
 
     def test_reactor(self):
-        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=555), 'q1')
         gsm = component.getGlobalSiteManager()
         gsm.registerUtility(q1, IQueue, 'q1')
 
@@ -323,7 +323,7 @@ class TestSingleQueueReactor(AsyncTestCase):
 class TestThreadedReactor(AsyncTestCase):
 
     def test_reactor(self):
-        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=444), 'q1')
         gsm = component.getGlobalSiteManager()
         gsm.registerUtility(q1, IQueue, 'q1')
 
