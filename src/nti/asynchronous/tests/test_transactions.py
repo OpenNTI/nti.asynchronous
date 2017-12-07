@@ -16,9 +16,14 @@ import fakeredis
 
 import transaction
 
+from zope.component import eventtesting
+
+from nti.asynchronous.interfaces import IJobAbortedEvent
+
 from nti.asynchronous.job import create_job
 
 from nti.asynchronous.redis_queue import RedisQueue
+from nti.asynchronous.redis_queue import PriorityQueue
 
 from nti.asynchronous.tests import AsyncTestCase
 
@@ -28,8 +33,8 @@ from nti.asynchronous.threadlocal import get_current_callable
 from nti.transactions import transactions
 
 
-def _redis():
-    return fakeredis.FakeStrictRedis(db=300)
+def _redis(db=300):
+    return fakeredis.FakeStrictRedis(db=db)
 
 
 def _pass_job():
@@ -48,6 +53,10 @@ def _manager_job():
     assert_that(get_current_callable(), not_none())
 
 
+def _fail():
+    raise Exception()
+        
+        
 class mock_db_trans(object):
     """
     A context manager that returns a connection. Use
@@ -108,9 +117,7 @@ class TestJobs(AsyncTestCase):
 
         assert_that(queue, has_length(2))
 
-        def _fail():
-            raise Exception()
-
+        eventtesting.clearEvents()
         # Job that fails during commit are not put back in the queue
         try:
             with mock_db_trans():
@@ -121,6 +128,8 @@ class TestJobs(AsyncTestCase):
                 transactions.do_near_end(call=_fail)
         except Exception:  # pylint: disable=broad-except
             pass
+        assert_that(eventtesting.getEvents(IJobAbortedEvent), 
+                    has_length(1))
 
         # Job failed and is back on queue
         assert_that(queue, has_length(1))
@@ -138,3 +147,19 @@ class TestJobs(AsyncTestCase):
 
         assert_that(queue, has_length(0))
         manager.clear()
+
+    def test_priority_queue(self):
+        queue = PriorityQueue(redis=_redis(222))
+        assert_that(queue, has_length(0))
+        with mock_db_trans():
+            queue.put(create_job(_pass_job))
+        
+        eventtesting.clearEvents()
+        try:
+            with mock_db_trans():
+                queue.claim()
+                transactions.do_near_end(call=_fail)
+        except Exception:  # pylint: disable=broad-except
+            pass
+        assert_that(eventtesting.getEvents(IJobAbortedEvent), 
+                    has_length(1))

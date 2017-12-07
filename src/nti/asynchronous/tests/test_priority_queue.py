@@ -20,6 +20,7 @@ from nti.testing.matchers import verifiably_provides
 
 import fakeredis
 
+from nti.asynchronous.interfaces import IJob
 from nti.asynchronous.interfaces import IRedisQueue
 
 from nti.asynchronous.job import create_job
@@ -35,6 +36,10 @@ def _redis():
 
 def mock_work():
     return 42
+
+
+def foo_work():
+    return 'foo'
 
 
 class TestPriorityQueue(AsyncTestCase):
@@ -81,7 +86,38 @@ class TestPriorityQueue(AsyncTestCase):
         rukia = create_job(mock_work, jobid='rukia')
         queue.put(rukia, use_transactions=False)
         assert_that(queue, has_length(3))
+
         del queue['rukia']
         assert_that('rukia', is_not(is_in(queue)))
         data = queue.keys()
         assert_that(sorted(data), is_([b'aizen', b'ichigo']))
+
+        queue.remove(aizen)
+        data = queue.keys()
+        assert_that(sorted(data), is_([b'ichigo']))
+
+        # empty
+        queue.empty()
+        assert_that(queue, has_length(0))
+
+        # again for coverage
+        queue.empty()
+        assert_that(queue, has_length(0))
+
+        # tail
+        job3 = queue.put(create_job(foo_work), False, False)
+        job4 = queue.put(create_job(mock_work), False, False)
+        assert_that(queue.claim(), is_(job4))
+        job4()
+        assert_that(queue.claim(), is_(job3))
+        job3() # coverage
+        
+        # unpickled
+        queue.put(create_job(foo_work), False)
+        jobs = queue.all(False)
+        assert_that(jobs, has_length(1))
+        assert_that(IJob.providedBy(queue._unpickle(jobs[0])),
+                    is_(True))
+
+        with self.assertRaises(KeyError):
+            queue['key']  # pylint: disable=pointless-statement

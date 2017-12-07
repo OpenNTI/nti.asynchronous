@@ -258,7 +258,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                     break
         finally:
             self.stop()
-            logger.warn('Exiting reactor. Queues=(%s)', self.queue_names)
+            logger.warning('Exiting reactor. Queues=(%s)', self.queue_names)
 
     __call__ = run
 
@@ -352,8 +352,8 @@ class AsyncFailedReactor(AsyncReactor):
             self.process_jobs()
         finally:
             self.stop()
-            logger.warn('Exiting reactor. queues=(%s)',
-                        set(self.queue_names))
+            logger.warning('Exiting reactor. queues=(%s)',
+                           set(self.queue_names))
             self.processor = None
     __call__ = run
 
@@ -389,6 +389,7 @@ class SingleQueueReactor(AsyncReactor):
 
     def remove_queues(self, *unused_queues):
         pass
+
 
 @interface.implementer(IAsyncReactor)
 class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
@@ -451,8 +452,8 @@ class ThreadedReactor(RunnerMixin, ReactorMixin, QueuesMixin):
         finally:
             self.stop_reactors(threads)
             self.stop()
-            logger.warn('Exiting reactor. queue=(%s)',
-                        set(self.queue_names))
+            logger.warning('Exiting reactor. queue=(%s)',
+                           set(self.queue_names))
         return threads
     __call__ = run
 

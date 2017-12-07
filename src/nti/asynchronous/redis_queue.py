@@ -262,7 +262,7 @@ class PriorityQueue(QueueMixin):
             while self._redis.zrem(self._name, jid) == 0:
                 # Somebody else also got the same item and removed before us
                 # Try again.
-                jid = self._redis.zrevrange(self._name, 0, 0)[0]
+                jid = self._redis.zrevrange(self._name, 0, 0)[0]  # pragma: no cover
             return jid
         except IndexError:
             # Queue is empty
