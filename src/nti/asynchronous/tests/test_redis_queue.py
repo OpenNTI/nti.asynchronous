@@ -9,7 +9,9 @@ from __future__ import absolute_import
 # pylint: disable=W0212,R0904
 
 from hamcrest import is_
+from hamcrest import none
 from hamcrest import is_in
+from hamcrest import is_not
 from hamcrest import not_none
 from hamcrest import equal_to
 from hamcrest import has_length
@@ -48,14 +50,15 @@ class TestRedisQueue(AsyncTestCase):
     def test_mixin(self):
         queue = redis_queue.QueueMixin(None, None)
         assert_that(queue.failed(), is_(()))
-        
+        assert_that(repr(queue), is_not(none()))
+
     def test_model(self):
-        queue = redis_queue.RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis(100))
         assert_that(queue, validly_provides(IRedisQueue))
         assert_that(queue, verifiably_provides(IRedisQueue))
 
     def test_empty(self):
-        queue = redis_queue.RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis(200))
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
 
@@ -64,14 +67,14 @@ class TestRedisQueue(AsyncTestCase):
         try:
             redis_queue.LONG_PUSH_DURATION_IN_SECS = 0
             queue = redis_queue.RedisQueue(redis=_redis())
-    
+
             job = queue.put(create_job(mock_work))
             transaction.commit()
             assert_that(queue, has_length(1))
             assert_that(list(queue), is_([job]))
             assert_that(queue[0], is_(job))
             assert_that(bool(queue), is_(True))
-    
+
             claimed = queue.claim()
             assert_that(claimed, equal_to(job))
             assert_that(queue, has_length(0))
@@ -82,7 +85,7 @@ class TestRedisQueue(AsyncTestCase):
             redis_queue.LONG_PUSH_DURATION_IN_SECS = old_value
 
     def test_operator(self):
-        queue = redis_queue.RedisQueue(redis=_redis())
+        queue = redis_queue.RedisQueue(redis=_redis(300))
         assert_that(queue, has_length(0))
 
         job2 = queue.put(create_job(multiply, jargs=(7, 6)))
@@ -147,5 +150,38 @@ class TestRedisQueue(AsyncTestCase):
         data = queue.failed(unpickle=True)
         assert_that(data, has_length(0))
 
+        # reset
         queue.empty()
         assert_that(queue, has_length(0))
+
+        # and again for coverage
+        queue.empty()
+        assert_that(queue, has_length(0))
+
+        queue.put(job4, False, False)
+        queue.put(job5, False, False)
+        assert_that(list(queue), is_([job5, job4]))
+
+        with self.assertRaises(IndexError):
+            queue[3]  # pylint: disable=pointless-statement
+
+        queue.empty()
+        assert_that(queue, has_length(0))
+
+
+class TestPriorityQueue(AsyncTestCase):
+
+    def test_ops(self):
+        queue = redis_queue.PriorityQueue(redis=_redis(400))
+        job3 = queue.put(create_job(multiply, jargs=(14, 3)), False, False)
+        job4 = queue.put(create_job(mock_work), False, False)
+        assert_that(list(queue), is_([job4, job3]))
+
+        # empty
+        queue.empty()
+        assert_that(queue, has_length(0))
+
+        # again for coverage
+        queue.empty()
+        assert_that(queue, has_length(0))
+        
