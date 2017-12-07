@@ -167,21 +167,3 @@ class TestRedisQueue(AsyncTestCase):
 
         queue.empty()
         assert_that(queue, has_length(0))
-
-
-class TestPriorityQueue(AsyncTestCase):
-
-    def test_ops(self):
-        queue = redis_queue.PriorityQueue(redis=_redis(400))
-        job3 = queue.put(create_job(multiply, jargs=(14, 3)), False, False)
-        job4 = queue.put(create_job(mock_work), False, False)
-        assert_that(list(queue), is_([job4, job3]))
-
-        # empty
-        queue.empty()
-        assert_that(queue, has_length(0))
-
-        # again for coverage
-        queue.empty()
-        assert_that(queue, has_length(0))
-        
