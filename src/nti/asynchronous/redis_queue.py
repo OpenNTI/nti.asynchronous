@@ -131,6 +131,7 @@ class QueueMixin(object):
 
     def __nonzero__(self):
         return bool(len(self))
+    __bool__ = __nonzero__
 
 
 @interface.implementer(IRedisQueue)
