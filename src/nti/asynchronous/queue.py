@@ -149,6 +149,7 @@ class Queue(Persistent):
 
     def __nonzero__(self):
         return bool(self._length())
+    __bool__ = __nonzero__
 
     def __getitem__(self, index):
         length = len(self)
