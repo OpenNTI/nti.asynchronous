@@ -296,6 +296,7 @@ class AsyncFailedReactor(AsyncReactor):
                 # Stop when we reach the start
                 break
 
+    # pylint: disable=keyword-arg-before-vararg 
     def execute_jobs(self, queue=None, *args, **kwargs):
         # set proper queue
         if queue is not None:
