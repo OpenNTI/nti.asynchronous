@@ -8,17 +8,29 @@ from __future__ import absolute_import
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import contains_inanyorder
 from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_in
 from hamcrest import is_not
 from hamcrest import has_length
 from hamcrest import assert_that
+from hamcrest import starts_with
+
+from nti.fakestatsd import FakeStatsDClient
+
+from nti.fakestatsd.matchers import is_counter
+from nti.fakestatsd.matchers import is_gauge
+from nti.fakestatsd.matchers import is_timer
 
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
 import fakeredis
+
+from perfmetrics import statsd_client_stack
+
+import transaction
 
 from nti.asynchronous.interfaces import IJob
 from nti.asynchronous.interfaces import IRedisQueue
@@ -30,8 +42,8 @@ from nti.asynchronous.redis_queue import PriorityQueue
 from nti.asynchronous.tests import AsyncTestCase
 
 
-def _redis():
-    return fakeredis.FakeStrictRedis(db=100)
+def _redis(db=100):
+    return fakeredis.FakeStrictRedis(db=db)
 
 
 def mock_work():
@@ -121,3 +133,27 @@ class TestPriorityQueue(AsyncTestCase):
 
         with self.assertRaises(KeyError):
             queue['key']  # pylint: disable=pointless-statement
+
+class TestRedisQueueMetrics(AsyncTestCase):
+
+    def setUp(self):
+        self.statsd = FakeStatsDClient()
+        statsd_client_stack.push(self.statsd)
+
+    def tearDown(self):
+        self.statsd = None
+        statsd_client_stack.pop()
+        
+    def test_priority_queue(self):
+        queue = PriorityQueue(redis=_redis(302))
+        queue.put(create_job(foo_work))
+        transaction.commit()
+
+        # We expect to have pushed a couple of metrics to statsd as
+        # part of executing the job.  We expect perfmetrics Metric around
+        # the push, and we expect a gauge with the queue length
+        metrics = self.statsd.metrics
+
+        assert_that(metrics, contains_inanyorder(is_counter(starts_with('ntiasync.nti/async/jobs.put')),
+                                                 is_timer(starts_with('ntiasync.nti/async/jobs.put')),
+                                                 is_gauge('ntiasync.nti/async/jobs.length', '1')))
