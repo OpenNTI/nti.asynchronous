@@ -8,10 +8,19 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import functools
+
 import time
+
 import zlib
+
 from io import BytesIO
+
 from datetime import datetime
+
+from perfmetrics import statsd_client
+from perfmetrics import Metric
+
 from six.moves import cPickle as pickle
 
 import transaction
@@ -49,6 +58,14 @@ class QueueMixin(object):
         self._failed = self
 
     @Lazy
+    def _put_metric_name(self):
+        return 'ntiasync.' + self._name + '.put'
+
+    @Lazy
+    def _queue_length_metric_name(self):
+        return 'ntiasync.' + self._name + '.length'
+
+    @Lazy
     def _redis(self):
         return self.__redis() if callable(self.__redis) else self.__redis
 
@@ -60,13 +77,20 @@ class QueueMixin(object):
         return result
 
     def _put_job(self, *args, **kwargs):
-        t0 = time.time()
-        self._do_put_job(*args, **kwargs)
-        duration = time.time() - t0
+        _do_put = functools.partial(self._do_put_job, *args, **kwargs)
+        length, duration = _timing(_do_put, self._put_metric_name)
+        if length is not None:
+            client = statsd_client()
+            if client is not None:
+                client.gauge(self._queue_length_metric_name, length)
         if duration > LONG_PUSH_DURATION_IN_SECS:
             logger.warning("Slow running redis push (%s)", duration)
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
+        """Implementations should implement this method to push the data to
+        the provided redis pipe. If efficient, this function may
+        choose to return the length of the queue after adding the data.
+        """
         raise NotImplementedError()
 
     def put(self, item, use_transactions=True, tail=True):
@@ -149,16 +173,19 @@ class RedisQueue(QueueMixin):
                                       create_failed_queue=False)
 
     def _do_put_job_pipe(self, pipe, data, tail, jid):
+        length_response_idx = 1
         if tail:
             pipe.rpush(self._name, data)
         else:
             pipe.lpush(self._name, data)
         if jid is not None:
+            length_response_idx += 1
             pipe.hset(self._hash, jid, '1')
-        pipe.execute()
+        results = pipe.execute()
+        return results[-1*length_response_idx]
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
-        self._do_put_job_pipe(pipe, data, tail, jid)
+        return self._do_put_job_pipe(pipe, data, tail, jid)
 
     def all(self, unpickle=True):
         # pylint: disable=no-member
@@ -254,7 +281,9 @@ class PriorityQueue(QueueMixin):
                 score = time.time()
         pipe.zadd(self._name, score, jid)
         pipe.hset(self._hash, jid, data)
-        pipe.execute()
+        pipe.hlen(self._hash)
+        results = pipe.execute()
+        return results[-1]
 
     def _do_claim_client(self):
         # pylint: disable=no-member
@@ -333,3 +362,15 @@ class PriorityQueue(QueueMixin):
 
     def __iter__(self):
         return iter(self.all(True))
+
+
+def _timing(operation, name):
+    """
+    Run the `operation` callable returning a tuple
+    of the return value of the operation, and the timing information
+    """
+    now = time.time()
+    with Metric(name):
+        result = operation()
+    done = time.time()
+    return (result, (done - now), )

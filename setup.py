@@ -13,6 +13,7 @@ TESTS_REQUIRE = [
     'nti.testing',
     'zope.dottedname',
     'zope.testrunner',
+    'nti.fakestatsd'
 ]
 
 
