@@ -184,6 +184,11 @@ class IJob(IAttributeAnnotatable, IContained):
     hasFailed = has_failed
 
 
+class IScheduledJob(IJob):
+
+    score = interface.Attribute("The score value of this job.")
+
+
 class IAsyncReactor(interface.Interface):
     """
     marker interface for a reactor
