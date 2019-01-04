@@ -1,0 +1,26 @@
+<!-- -*- mode: nxml -*- -->
+<configure  xmlns="http://namespaces.zope.org/zope"
+            xmlns:i18n="http://namespaces.zope.org/i18n"
+            xmlns:ext="http://nextthought.com/ntp/ext"
+            xmlns:zcml="http://namespaces.zope.org/zcml"
+            xmlns:scheduled="http://nextthought.com/ntp/asynchronous/scheduled">
+
+    <include package="zope.component" file="meta.zcml" />
+    <include package="zope.security" file="meta.zcml" />
+    <include package="zope.component" />
+    <include package="zope.security" />
+
+    <include package="." file="meta.zcml" />
+
+    <!-- Scheduled notifications -->
+    <configure zcml:condition="have testmode">
+        <scheduled:registerImmediateScheduledQueue />
+        <scheduled:registerImmediateNotificationQueue />
+    </configure>
+
+    <configure zcml:condition="not-have testmode">
+        <scheduled:registerScheduledQueue />
+        <scheduled:registerNotificationQueue />
+    </configure>
+
+</configure>

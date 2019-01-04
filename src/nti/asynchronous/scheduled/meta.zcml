@@ -1,0 +1,32 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml"
+			xmlns:meta="http://namespaces.zope.org/meta">
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+	<include package="zope.security" />
+
+	<meta:directives namespace="http://nextthought.com/ntp/asynchronous/scheduled">
+
+		<meta:directive	name="registerScheduledQueue"
+						schema=".interfaces.IScheduledQueueFactory"
+						handler=".zcml.registerScheduledQueue" />
+
+		<meta:directive	name="registerImmediateScheduledQueue"
+						schema=".interfaces.IScheduledQueueFactory"
+						handler=".zcml.registerImmediateScheduledQueue" />
+
+		<meta:directive	name="registerNotificationQueue"
+						schema=".interfaces.INotificationQueueFactory"
+						handler=".zcml.registerNotificationQueue" />
+
+		<meta:directive	name="registerImmediateNotificationQueue"
+						schema=".interfaces.INotificationQueueFactory"
+						handler=".zcml.registerImmediateNotificationQueue" />
+
+	</meta:directives>
+
+</configure>

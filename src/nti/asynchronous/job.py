@@ -177,29 +177,12 @@ class Job(object):
         return xhash
 
 
-class ScheduledJob(Job):
-
-    def __init__(self, score, *args, **kwargs):
-        self.score = score
-        Job.__init__(self, *args, **kwargs)
-
-
 def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
     assert jargs is None or isinstance(jargs, (tuple, list))
     assert jkwargs is None or isinstance(jkwargs, Mapping)
     jkwargs = jkwargs or {}
     jargs = [call] + list(jargs or ())
     result = cls(*jargs, **jkwargs)
-    result.id = text_(jobid or uuid.uuid4())
-    return result
-
-
-def create_scheduled_job(call, score, jargs=None, jkwargs=None, jobid=None, cls=ScheduledJob):
-    assert jargs is None or isinstance(jargs, (tuple, list))
-    assert jkwargs is None or isinstance(jkwargs, Mapping)
-    jkwargs = jkwargs or {}
-    jargs = [call] + list(jargs or ())
-    result = cls(score, *jargs, **jkwargs)
     result.id = text_(jobid or uuid.uuid4())
     return result
 
