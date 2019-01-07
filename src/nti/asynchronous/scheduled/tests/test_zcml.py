@@ -18,16 +18,16 @@ from nti.appserver.policies.sites import BASECOPPA as BASESITE
 
 from nti.asynchronous.redis_queue import PriorityQueue
 
-from nti.asynchronous.scheduled import SCHEDULED_QUEUE_NAME
-from nti.asynchronous.scheduled import NOTIFICATION_QUEUE_NAME
+from nti.asynchronous.scheduled import SCHEDULED_JOB_QUEUE_NAME
+from nti.asynchronous.scheduled import SCHEDULED_JOB_EXECUTOR_QUEUE_NAME
 
 from nti.asynchronous.scheduled.interfaces import IScheduledQueueFactory
-from nti.asynchronous.scheduled.interfaces import INotificationQueueFactory
+from nti.asynchronous.scheduled.interfaces import IScheduledExecutorQueueFactory
 
 from nti.asynchronous.scheduled.redis_queue import ScheduledQueue
 
 from nti.asynchronous.scheduled.utils import get_scheduled_factory
-from nti.asynchronous.scheduled.utils import get_notification_factory
+from nti.asynchronous.scheduled.utils import get_executor_factory
 
 from nti.site.transient import TrivialSite as _TrivialSite
 
@@ -36,15 +36,15 @@ from nti.testing.base import ConfiguringTestBase
 ZCML_STRING = """
         <configure xmlns="http://namespaces.zope.org/zope"
             xmlns:zcml="http://namespaces.zope.org/zcml"
-            xmlns:calendar="http://nextthought.com/ntp/asynchronous/scheduled">
+            xmlns:scheduled="http://nextthought.com/ntp/asynchronous/scheduled">
 
             <include package="z3c.baseregistry" file="meta.zcml" />
 
             <include package="nti.asynchronous.scheduled" file="meta.zcml" />
 
             <registerIn registry="nti.asynchronous.scheduled.tests.test_zcml._TEST_SITE">
-                <calendar:registerScheduledQueue />
-                <calendar:registerNotificationQueue />
+                <scheduled:registerScheduledQueue />
+                <scheduled:registerExecutorQueue />
             </registerIn>
 
         </configure>
@@ -61,10 +61,10 @@ class TestZcml(ConfiguringTestBase):
         with site(_TrivialSite(_TEST_SITE)):
             factory = get_scheduled_factory()
             assert_that(IScheduledQueueFactory.providedBy(factory), is_(True))
-            queue = factory.get_queue(SCHEDULED_QUEUE_NAME)
+            queue = factory.get_queue(SCHEDULED_JOB_QUEUE_NAME)
             assert_that(queue, instance_of(ScheduledQueue))
 
-            factory = get_notification_factory()
-            assert_that(INotificationQueueFactory.providedBy(factory), is_(True))
-            queue = factory.get_queue(NOTIFICATION_QUEUE_NAME)
+            factory = get_executor_factory()
+            assert_that(IScheduledExecutorQueueFactory.providedBy(factory), is_(True))
+            queue = factory.get_queue(SCHEDULED_JOB_EXECUTOR_QUEUE_NAME)
             assert_that(queue, instance_of(PriorityQueue))

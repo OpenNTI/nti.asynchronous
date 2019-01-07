@@ -19,13 +19,13 @@
 						schema=".interfaces.IScheduledQueueFactory"
 						handler=".zcml.registerImmediateScheduledQueue" />
 
-		<meta:directive	name="registerNotificationQueue"
-						schema=".interfaces.INotificationQueueFactory"
-						handler=".zcml.registerNotificationQueue" />
+		<meta:directive	name="registerExecutorQueue"
+						schema=".interfaces.IScheduledExecutorQueueFactory"
+						handler=".zcml.registerExecutorQueue" />
 
-		<meta:directive	name="registerImmediateNotificationQueue"
-						schema=".interfaces.INotificationQueueFactory"
-						handler=".zcml.registerImmediateNotificationQueue" />
+		<meta:directive	name="registerImmediateExecutorQueue"
+						schema=".interfaces.IScheduledExecutorQueueFactory"
+						handler=".zcml.registerImmediateExecutorQueue" />
 
 	</meta:directives>
 

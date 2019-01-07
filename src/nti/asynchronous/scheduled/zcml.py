@@ -19,11 +19,11 @@ from nti.asynchronous.interfaces import IRedisQueue
 
 from nti.asynchronous.redis_queue import PriorityQueue as RedisQueue
 
-from nti.asynchronous.scheduled import SCHEDULED_QUEUE_NAMES
-from nti.asynchronous.scheduled import NOTIFICATION_QUEUE_NAMES
+from nti.asynchronous.scheduled import SCHEDULED_JOB_QUEUE_NAMES
+from nti.asynchronous.scheduled import SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES
 
-from nti.asynchronous.scheduled.interfaces import INotificationQueueFactory
 from nti.asynchronous.scheduled.interfaces import IScheduledQueueFactory
+from nti.asynchronous.scheduled.interfaces import IScheduledExecutorQueueFactory
 
 from nti.asynchronous.scheduled.redis_queue import ScheduledQueue
 
@@ -48,7 +48,7 @@ class _AbstractQueueFactory(object):
     def get_queue(self, name):
         queue = async_queue(name, self.queue_interface)
         if queue is None:
-            msg = "No queue exists for scheduled/notification job queue (%s)." % name
+            msg = "No queue exists for scheduled/executor job queue (%s)." % name
             raise ValueError(msg)
         return queue
 
@@ -65,7 +65,7 @@ class _ScheduledQueueFactory(_AbstractQueueFactory):
     queue_interface = IRedisQueue
 
     def __init__(self, _context):
-        for name in SCHEDULED_QUEUE_NAMES:
+        for name in SCHEDULED_JOB_QUEUE_NAMES:
             queue = ScheduledQueue(self._redis, name)
             utility(_context, provides=IRedisQueue, component=queue, name=name)
 
@@ -89,34 +89,34 @@ def registerImmediateScheduledQueue(_context):
     utility(_context, provides=IScheduledQueueFactory, component=factory)
 
 
-# notification queue
+# executor queue
 
 
-@interface.implementer(INotificationQueueFactory)
-class _NotificationQueueFactory(_AbstractQueueFactory):
+@interface.implementer(IScheduledExecutorQueueFactory)
+class _ExecutorQueueFactory(_AbstractQueueFactory):
 
     queue_interface = IRedisQueue
 
     def __init__(self, _context):
-        for name in NOTIFICATION_QUEUE_NAMES:
+        for name in SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES:
             queue = RedisQueue(self._redis, name)
             utility(_context, provides=IRedisQueue, component=queue, name=name)
 
 
-@interface.implementer(INotificationQueueFactory)
-class _ImmediateNotificationQueueFactory(object):
+@interface.implementer(IScheduledExecutorQueueFactory)
+class _ImmediateExecutorQueueFactory(object):
 
     def get_queue(self, unused_name):
         return ImmediateQueueRunner()
 
 
-def registerNotificationQueue(_context):
-    logger.info("Registering notification redis queue")
-    factory = _NotificationQueueFactory(_context)
-    utility(_context, provides=INotificationQueueFactory, component=factory)
+def registerExecutorQueue(_context):
+    logger.info("Registering scheduled executor redis queue")
+    factory = _ExecutorQueueFactory(_context)
+    utility(_context, provides=IScheduledExecutorQueueFactory, component=factory)
 
 
-def registerImmediateNotificationQueue(_context):
-    logger.info("Registering immediate notification queue")
-    factory = _ImmediateNotificationQueueFactory()
-    utility(_context, provides=INotificationQueueFactory, component=factory)
+def registerImmediateExecutorQueue(_context):
+    logger.info("Registering immediate scheduled executor queue")
+    factory = _ImmediateExecutorQueueFactory()
+    utility(_context, provides=IScheduledExecutorQueueFactory, component=factory)

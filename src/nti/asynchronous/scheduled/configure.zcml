@@ -12,15 +12,15 @@
 
     <include package="." file="meta.zcml" />
 
-    <!-- Scheduled notifications -->
+    <!-- Scheduled and executors -->
     <configure zcml:condition="have testmode">
         <scheduled:registerImmediateScheduledQueue />
-        <scheduled:registerImmediateNotificationQueue />
+        <scheduled:registerImmediateExecutorQueue />
     </configure>
 
     <configure zcml:condition="not-have testmode">
         <scheduled:registerScheduledQueue />
-        <scheduled:registerNotificationQueue />
+        <scheduled:registerExecutorQueue />
     </configure>
 
 </configure>

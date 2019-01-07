@@ -14,19 +14,23 @@ from zope import interface
 
 from nti.asynchronous.interfaces import IJob
 
+from nti.schema.field import Number
+
 
 class IScheduledJob(IJob):
 
-    score = interface.Attribute("The score value of this job.")
+    timestamp = Number(title=u"The executing time",
+                       description=u'The utc timestamp when this job should be executed.',
+                       required=True)
 
 
 class IScheduledQueueFactory(interface.Interface):
     """
-    A factory for job scheduled queues.
+    A factory for scheduled job queues.
     """
 
 
-class INotificationQueueFactory(interface.Interface):
+class IScheduledExecutorQueueFactory(interface.Interface):
     """
-    A factory for job notifications queues.
+    A factory for scheduled job executor queues.
     """

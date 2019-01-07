@@ -41,9 +41,9 @@ class ScheduledQueue(ScoredQueueMixin):
             # case our job is picked up before the database state is updated.
             transactions.do_near_end(target=self,
                                      call=self._put_job,
-                                     args=(pipe, data, tail, item.id, item.score))
+                                     args=(pipe, data, tail, item.id, item.timestamp))
         else:
-            self._put_job(pipe, data, tail, item.id, item.score)
+            self._put_job(pipe, data, tail, item.id, item.timestamp)
         return item
 
     def _do_claim_client(self):
