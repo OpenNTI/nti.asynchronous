@@ -44,7 +44,7 @@ from nti.asynchronous.tests import AsyncTestCase
 
 
 def _redis(db=200):
-    return fakeredis.FakeStrictRedis(db=db)
+    return fakeredis.FakeStrictRedis(db=db, singleton=False)
 
 
 def mock_work():

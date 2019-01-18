@@ -34,7 +34,7 @@ from nti.transactions import transactions
 
 
 def _redis(db=300):
-    return fakeredis.FakeStrictRedis(db=db)
+    return fakeredis.FakeStrictRedis(db=db, singleton=False)
 
 
 def _pass_job():
@@ -55,8 +55,8 @@ def _manager_job():
 
 def _fail():
     raise Exception()
-        
-        
+
+
 class mock_db_trans(object):
     """
     A context manager that returns a connection. Use
@@ -88,7 +88,6 @@ class mock_db_trans(object):
 class TestJobs(AsyncTestCase):
 
     def test_transactions(self):
-
         queue = RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
 
@@ -128,7 +127,7 @@ class TestJobs(AsyncTestCase):
                 transactions.do_near_end(call=_fail)
         except Exception:  # pylint: disable=broad-except
             pass
-        assert_that(eventtesting.getEvents(IJobAbortedEvent), 
+        assert_that(eventtesting.getEvents(IJobAbortedEvent),
                     has_length(1))
 
         # Job failed and is back on queue
@@ -153,7 +152,7 @@ class TestJobs(AsyncTestCase):
         assert_that(queue, has_length(0))
         with mock_db_trans():
             queue.put(create_job(_pass_job))
-        
+
         eventtesting.clearEvents()
         try:
             with mock_db_trans():
@@ -161,5 +160,5 @@ class TestJobs(AsyncTestCase):
                 transactions.do_near_end(call=_fail)
         except Exception:  # pylint: disable=broad-except
             pass
-        assert_that(eventtesting.getEvents(IJobAbortedEvent), 
+        assert_that(eventtesting.getEvents(IJobAbortedEvent),
                     has_length(1))

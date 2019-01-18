@@ -43,7 +43,7 @@ from nti.asynchronous.tests import AsyncTestCase
 
 
 def _redis(db=100):
-    return fakeredis.FakeStrictRedis(db=db)
+    return fakeredis.FakeStrictRedis(db=db, singleton=False)
 
 
 def mock_work():
@@ -123,7 +123,7 @@ class TestPriorityQueue(AsyncTestCase):
         job4()
         assert_that(queue.claim(), is_(job3))
         job3() # coverage
-        
+
         # unpickled
         queue.put(create_job(foo_work), False)
         jobs = queue.all(False)
@@ -143,7 +143,7 @@ class TestRedisQueueMetrics(AsyncTestCase):
     def tearDown(self):
         self.statsd = None
         statsd_client_stack.pop()
-        
+
     def test_priority_queue(self):
         queue = PriorityQueue(redis=_redis(302))
         queue.put(create_job(foo_work))
