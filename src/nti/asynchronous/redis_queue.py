@@ -259,12 +259,11 @@ Queue = RedisQueue  # alias
 MAX_TIMESTAMP = time.mktime(datetime.max.timetuple())
 
 
-@interface.implementer(IRedisQueue)
-class PriorityQueue(QueueMixin):
+class ScoredQueueMixin(QueueMixin):
 
     def __init__(self, redis, job_queue_name=None,
                  failed_queue_name=None, create_failed_queue=True):
-        super(PriorityQueue, self).__init__(redis, job_queue_name)
+        super(ScoredQueueMixin, self).__init__(redis, job_queue_name)
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = RedisQueue(redis,
@@ -286,17 +285,7 @@ class PriorityQueue(QueueMixin):
         return results[-1]
 
     def _do_claim_client(self):
-        # pylint: disable=no-member
-        try:
-            jid = self._redis.zrevrange(self._name, 0, 0)[0]
-            while self._redis.zrem(self._name, jid) == 0:
-                # Somebody else also got the same item and removed before us
-                # Try again.
-                jid = self._redis.zrevrange(self._name, 0, 0)[0]  # pragma: no cover
-            return jid
-        except IndexError:
-            # Queue is empty
-            pass
+        raise NotImplementedError()
 
     def _do_claim(self):
         return self._do_claim_client()
@@ -362,6 +351,23 @@ class PriorityQueue(QueueMixin):
 
     def __iter__(self):
         return iter(self.all(True))
+
+
+@interface.implementer(IRedisQueue)
+class PriorityQueue(ScoredQueueMixin):
+
+    def _do_claim_client(self):
+        # pylint: disable=no-member
+        try:
+            jid = self._redis.zrevrange(self._name, 0, 0)[0]
+            while self._redis.zrem(self._name, jid) == 0:
+                # Somebody else also got the same item and removed before us
+                # Try again.
+                jid = self._redis.zrevrange(self._name, 0, 0)[0]  # pragma: no cover
+            return jid
+        except IndexError:
+            # Queue is empty
+            pass
 
 
 def _timing(operation, name):

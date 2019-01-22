@@ -24,4 +24,6 @@
 			 for="tuple"
 			 provides=".interfaces.IError" />
 
+	<include package=".scheduled" file="configure.zcml"/>
+
 </configure>
