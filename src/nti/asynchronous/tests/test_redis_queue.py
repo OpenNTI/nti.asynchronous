@@ -43,8 +43,8 @@ from nti.asynchronous import redis_queue
 from nti.asynchronous.tests import AsyncTestCase
 
 
-def _redis(db=200):
-    return fakeredis.FakeStrictRedis(db=db, singleton=False)
+def _redis():
+    return fakeredis.FakeStrictRedis()
 
 
 def mock_work():
@@ -63,12 +63,12 @@ class TestRedisQueue(AsyncTestCase):
         assert_that(repr(queue), is_not(none()))
 
     def test_model(self):
-        queue = redis_queue.RedisQueue(redis=_redis(100))
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, validly_provides(IRedisQueue))
         assert_that(queue, verifiably_provides(IRedisQueue))
 
     def test_empty(self):
-        queue = redis_queue.RedisQueue(redis=_redis(200))
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
         assert_that(list(queue), is_([]))
 
@@ -95,7 +95,7 @@ class TestRedisQueue(AsyncTestCase):
             redis_queue.LONG_PUSH_DURATION_IN_SECS = old_value
 
     def test_operator(self):
-        queue = redis_queue.RedisQueue(redis=_redis(300))
+        queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
 
         job2 = queue.put(create_job(multiply, jargs=(7, 6)))
@@ -190,7 +190,7 @@ class TestRedisQueueMetrics(AsyncTestCase):
         statsd_client_stack.pop()
 
     def test_redis_queue(self):
-        queue = redis_queue.RedisQueue(redis=_redis(300))
+        queue = redis_queue.RedisQueue(redis=_redis())
         queue.put(create_job(multiply, jargs=(7, 6)))
         transaction.commit()
 

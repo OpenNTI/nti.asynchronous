@@ -42,8 +42,8 @@ from nti.asynchronous.redis_queue import PriorityQueue
 from nti.asynchronous.tests import AsyncTestCase
 
 
-def _redis(db=100):
-    return fakeredis.FakeStrictRedis(db=db, singleton=False)
+def _redis():
+    return fakeredis.FakeStrictRedis()
 
 
 def mock_work():
@@ -145,7 +145,7 @@ class TestRedisQueueMetrics(AsyncTestCase):
         statsd_client_stack.pop()
 
     def test_priority_queue(self):
-        queue = PriorityQueue(redis=_redis(302))
+        queue = PriorityQueue(redis=_redis())
         queue.put(create_job(foo_work))
         transaction.commit()
 

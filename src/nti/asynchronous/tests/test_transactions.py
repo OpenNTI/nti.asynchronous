@@ -33,8 +33,8 @@ from nti.asynchronous.threadlocal import get_current_callable
 from nti.transactions import transactions
 
 
-def _redis(db=300):
-    return fakeredis.FakeStrictRedis(db=db, singleton=False)
+def _redis():
+    return fakeredis.FakeStrictRedis()
 
 
 def _pass_job():
@@ -148,7 +148,7 @@ class TestJobs(AsyncTestCase):
         manager.clear()
 
     def test_priority_queue(self):
-        queue = PriorityQueue(redis=_redis(222))
+        queue = PriorityQueue(redis=_redis())
         assert_that(queue, has_length(0))
         with mock_db_trans():
             queue.put(create_job(_pass_job))

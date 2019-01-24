@@ -278,7 +278,7 @@ class ScoredQueueMixin(QueueMixin):
                 score = MAX_TIMESTAMP - time.time()
             else:
                 score = time.time()
-        pipe.zadd(self._name, score, jid)
+        pipe.zadd(self._name, {jid: score})
         pipe.hset(self._hash, jid, data)
         pipe.hlen(self._hash)
         results = pipe.execute()
