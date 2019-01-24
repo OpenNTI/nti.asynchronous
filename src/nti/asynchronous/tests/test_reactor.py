@@ -275,7 +275,7 @@ class TestAsyncFailedReactor(AsyncTestCase):
         gsm.unregisterUtility(q1, IQueue, 'q1')
 
     def test_process_jobs(self):
-        q1 = RedisQueue(fakeredis.FakeStrictRedis(db=101), 'q1')
+        q1 = RedisQueue(fakeredis.FakeStrictRedis(), 'q1')
         gsm = component.getGlobalSiteManager()
         gsm.registerUtility(q1, IQueue, 'q1')
         q1.put_failed(create_job(_mock_job), False)
