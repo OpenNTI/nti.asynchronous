@@ -51,6 +51,7 @@ setup(
     tests_require=TESTS_REQUIRE,
     install_requires=[
         'setuptools',
+	'nti.coremetadata',
         'nti.property',
         'nti.site',
         'nti.schema',
