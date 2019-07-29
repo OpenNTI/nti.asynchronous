@@ -41,7 +41,7 @@ from nti.transactions import transactions
 
 DEFAULT_QUEUE_NAME = u'nti/async/jobs'
 
-LONG_PUSH_DURATION_IN_SECS = 5
+LONG_PUSH_DURATION_IN_SECS = 1
 
 logger = __import__('logging').getLogger(__name__)
 
