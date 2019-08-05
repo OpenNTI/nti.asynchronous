@@ -8,6 +8,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+# NOTE: We must not import *anything* before the patch
+# We want to ensure that a lot of the pserve patches appy here.
+from nti.monkey import patch_nti_pserve_on_import
+patch_nti_pserve_on_import.patch()
+
 import time
 import random
 import logging
@@ -296,7 +301,7 @@ class AsyncFailedReactor(AsyncReactor):
                 # Stop when we reach the start
                 break
 
-    # pylint: disable=keyword-arg-before-vararg 
+    # pylint: disable=keyword-arg-before-vararg
     def execute_jobs(self, queue=None, *args, **kwargs):
         # set proper queue
         if queue is not None:
