@@ -14,7 +14,7 @@ try:
     import MySQLdb
     from transaction.interfaces import TransientError
     MySQLdb.OperationalError.__bases__ += (TransientError,)
-except ImportError:
+except (ImportError, TypeError):
     pass
 
 import time
@@ -262,7 +262,7 @@ class AsyncReactor(RunnerMixin, ReactorMixin, QueuesMixin):
                     sleep(self.sleep_time)
                     if self.is_running():
                         if not self.is_paused() and not self.process_job():
-                            break
+                            return 2
                 except KeyboardInterrupt:  # pragma: no cover
                     break
         finally:
