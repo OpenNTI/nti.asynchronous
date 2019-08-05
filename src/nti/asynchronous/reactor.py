@@ -8,10 +8,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-# NOTE: We must not import *anything* before the patch
-# We want to ensure that a lot of the pserve patches appy here.
-from nti.monkey import patch_nti_pserve_on_import
-patch_nti_pserve_on_import.patch()
+# Temporary until relstorage handle this; ensures these errors cause
+# transactional retries.
+try:
+    import MySQLdb
+    from transaction.interfaces import TransientError
+    MySQLdb.OperationalError.__bases__ += (TransientError,)
+except ImportError:
+    pass
 
 import time
 import random
