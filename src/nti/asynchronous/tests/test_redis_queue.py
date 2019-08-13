@@ -194,6 +194,8 @@ class TestRedisQueueMetrics(AsyncTestCase):
         queue.put(create_job(multiply, jargs=(7, 6)))
         transaction.commit()
 
+        queue.claim()
+
         # We expect to have pushed a couple of metrics to statsd as
         # part of executing the job.  We expect perfmetrics Metric around
         # the push, and we expect a gauge with the queue length
@@ -201,5 +203,7 @@ class TestRedisQueueMetrics(AsyncTestCase):
 
         assert_that(metrics, contains_inanyorder(is_counter(starts_with('ntiasync.nti/async/jobs.put')),
                                                  is_timer(starts_with('ntiasync.nti/async/jobs.put')),
-                                                 is_gauge('ntiasync.nti/async/jobs.length', '1')))
+                                                 is_gauge('ntiasync.nti/async/jobs.length', '1'),
+                                                 is_counter(starts_with('ntiasync.nti/async/jobs.claim')),
+                                                 is_timer(starts_with('ntiasync.nti/async/jobs.claim'))))
 

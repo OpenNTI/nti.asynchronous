@@ -66,6 +66,10 @@ class QueueMixin(object):
         return 'ntiasync.' + self._name + '.length'
 
     @Lazy
+    def _claim_metric_name(self):
+        return 'ntiasync.' + self._name + '.claim'
+
+    @Lazy
     def _redis(self):
         return self.__redis() if callable(self.__redis) else self.__redis
 
@@ -212,22 +216,23 @@ class RedisQueue(QueueMixin):
     def claim(self, default=None):
         # pylint: disable=no-member
         # once we get the job from redis, it's remove from it
-        data = self._do_claim()
-        if data is None:
-            return default
+        with Metric(self._claim_metric_name):
+            data = self._do_claim()
+            if data is None:
+                return default
 
-        job = self._unpickle(data)
-        self._redis.hdel(self._hash, job.id)  # unset
-        logger.debug("Job (%s) claimed", job.id)
+            job = self._unpickle(data)
+            self._redis.hdel(self._hash, job.id)  # unset
+            logger.debug("Job (%s) claimed", job.id)
 
-        # notify if the transaction aborts
-        def after_commit_or_abort(success=False):
-            if not success and not job.is_side_effect_free:
-                logger.warning("Transaction abort for [%s] (%s)",
+            # notify if the transaction aborts
+            def after_commit_or_abort(success=False):
+                if not success and not job.is_side_effect_free:
+                    logger.warning("Transaction abort for [%s] (%s)",
                                self._name, job.id)
-                notify(JobAbortedEvent(job))
-        transaction.get().addAfterCommitHook(after_commit_or_abort)
-        return job
+                    notify(JobAbortedEvent(job))
+                    transaction.get().addAfterCommitHook(after_commit_or_abort)
+            return job
 
     def empty(self):
         # pylint: disable=no-member
