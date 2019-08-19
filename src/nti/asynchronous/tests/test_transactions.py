@@ -118,22 +118,29 @@ class TestJobs(AsyncTestCase):
 
         eventtesting.clearEvents()
         # Job that fails during commit are not put back in the queue
-        try:
-            with mock_db_trans():
-                claimed = queue.claim()
-                assert_that(claimed, not_none())
-                claimed()
-
-                transactions.do_near_end(call=_fail)
-        except Exception:  # pylint: disable=broad-except
-            pass
-        assert_that(eventtesting.getEvents(IJobAbortedEvent),
-                    has_length(1))
+        # XXX: We need to revisit all this. We cannot catch all errors
+        # and then continue to commit the transaction (to ensure we pull
+        # an item off the queue and do not continually re-try it - which
+        # is a code or state issue). Therefore, we ensure we do not commit
+        # err, which may commit objects in an inconsitent state.
+#         try:
+#             with mock_db_trans():
+#                 claimed = queue.claim()
+#                 assert_that(claimed, not_none())
+#                 claimed()
+#
+#                 transactions.do_near_end(call=_fail)
+#         except Exception:  # pylint: disable=broad-except
+#             pass
+#         assert_that(eventtesting.getEvents(IJobAbortedEvent),
+#                     has_length(1))
 
         # Job failed and is back on queue
-        assert_that(queue, has_length(1))
+        assert_that(queue, has_length(2))
 
         with mock_db_trans():
+            claimed = queue.claim()
+            claimed()
             claimed = queue.claim()
             claimed()
 
