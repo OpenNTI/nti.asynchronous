@@ -39,7 +39,7 @@ from nti.property.property import alias
 
 from nti.transactions import transactions
 
-DEFAULT_QUEUE_NAME = u'nti/async/jobs'
+DEFAULT_QUEUE_NAME = 'nti/async/jobs'
 
 LONG_PUSH_DURATION_IN_SECS = 1
 
