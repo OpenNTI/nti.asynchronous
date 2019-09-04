@@ -57,6 +57,10 @@ class QueueMixin(object):
         self._hash = self._name + '/hash'
         self._failed = self
 
+    @property
+    def __name__(self):
+        return unicode(self._name)
+
     @Lazy
     def _put_metric_name(self):
         return 'ntiasync.' + self._name + '.put'
