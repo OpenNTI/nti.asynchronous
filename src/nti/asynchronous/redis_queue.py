@@ -172,8 +172,9 @@ class RedisQueue(QueueMixin):
     _queue = _length = _failed_jobs = None
 
     def __init__(self, redis, job_queue_name=None, failed_queue_name=None,
-                 create_failed_queue=True):
+                 create_failed_queue=True, dedupe=True):
         super(RedisQueue, self).__init__(redis, job_queue_name)
+        self.dedupe = dedupe
         if create_failed_queue:
             failed_queue_name = failed_queue_name or self._name + "/failed"
             self._failed = RedisQueue(redis,
@@ -193,7 +194,14 @@ class RedisQueue(QueueMixin):
         return results[-1*length_response_idx]
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
-        return self._do_put_job_pipe(pipe, data, tail, jid)
+        # Check for dedupe before putting job
+        # The last clause checks if jid is in `_hash`.
+        # This should be transactionally safe: we should put at the end of a
+        # tx. Any job that is already in the queue would not have been
+        # popped yet.
+        if     self.dedupe \
+            and (jid is None or jid not in self):
+            return self._do_put_job_pipe(pipe, data, tail, jid)
 
     def all(self, unpickle=True):
         # pylint: disable=no-member

@@ -98,9 +98,14 @@ class TestRedisQueue(AsyncTestCase):
         queue = redis_queue.RedisQueue(redis=_redis())
         assert_that(queue, has_length(0))
 
-        job2 = queue.put(create_job(multiply, jargs=(7, 6)))
+        job1 = create_job(multiply, jargs=(7, 6))
+        job2 = queue.put(job1)
         transaction.commit()
+        assert_that(queue, has_length(1))
 
+        # Dedupe ensures we only have this job once
+        queue.put(job1)
+        transaction.commit()
         assert_that(queue, has_length(1))
 
         job3 = queue.put(create_job(multiply, jargs=(14, 3)))
@@ -177,6 +182,30 @@ class TestRedisQueue(AsyncTestCase):
 
         queue.empty()
         assert_that(queue, has_length(0))
+
+    def test_dedupe(self):
+        """
+        Dedupe on job_id. We rely on jobs that are different not having
+        duplicate job_ids in real world usage.
+        """
+        queue = redis_queue.RedisQueue(redis=_redis())
+        assert_that(queue, has_length(0))
+
+        job1 = create_job(multiply, jargs=(7, 6))
+        queue.put(job1)
+        transaction.commit()
+        assert_that(queue, has_length(1))
+
+        # Dedupe ensures we only have this job once
+        queue.put(job1)
+        transaction.commit()
+        assert_that(queue, has_length(1))
+
+        job2 = create_job(multiply, jargs=(7, 6))
+        queue.put(job2)
+        queue.put(job1)
+        transaction.commit()
+        assert_that(queue, has_length(2))
 
 
 class TestRedisQueueMetrics(AsyncTestCase):
