@@ -84,15 +84,11 @@ class QueueMixin(object):
         result = zlib.compress(bio.read())
         return result
 
-    def _put_job(self, *args, **kwargs):
-        _do_put = functools.partial(self._do_put_job, *args, **kwargs)
-        length, duration = _timing(_do_put, self._put_metric_name)
-        if length is not None:
-            client = statsd_client()
-            if client is not None:
-                client.gauge(self._queue_length_metric_name, length)
-        if duration > LONG_PUSH_DURATION_IN_SECS:
-            logger.warning("Slow running redis push (%s)", duration)
+    def _update_length_stat(self):
+        client = statsd_client()
+        if client is not None:
+            size = len(self)
+            client.gauge(self._queue_length_metric_name, size)
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
         """Implementations should implement this method to push the data to
@@ -100,6 +96,13 @@ class QueueMixin(object):
         choose to return the length of the queue after adding the data.
         """
         raise NotImplementedError()
+
+    def _put_job(self, *args, **kwargs):
+        _do_put = functools.partial(self._do_put_job, *args, **kwargs)
+        unused_results, duration = _timing(_do_put, self._put_metric_name)
+        self._update_length_stat()
+        if duration > LONG_PUSH_DURATION_IN_SECS:
+            logger.warning("Slow running redis push (%s)", duration)
 
     def put(self, item, use_transactions=True, tail=True):
         item = IJob(item)
@@ -116,6 +119,19 @@ class QueueMixin(object):
         else:
             self._put_job(pipe, data, tail, item.id)
         return item
+
+    def _do_claim(self):
+        """
+        Implementations should implement this to claim data.
+        """
+        raise NotImplementedError()
+
+    def claim(self, default=None):
+        try:
+            with Metric(self._claim_metric_name):
+                return self._do_claim(default=default)
+        finally:
+            self._update_length_stat()
 
     def _unpickle(self, data):
         data = zlib.decompress(data)
@@ -222,29 +238,25 @@ class RedisQueue(QueueMixin):
         result = self._redis.lpop(self._name)
         return result
 
-    def _do_claim(self):
-        return self._do_claim_client()
-
-    def claim(self, default=None):
+    def _do_claim(self, default=None):
         # pylint: disable=no-member
         # once we get the job from redis, it's remove from it
-        with Metric(self._claim_metric_name):
-            data = self._do_claim()
-            if data is None:
-                return default
+        data = self._do_claim_client()
+        if data is None:
+            return default
 
-            job = self._unpickle(data)
-            self._redis.hdel(self._hash, job.id)  # unset
-            logger.debug("Job (%s) claimed", job.id)
+        job = self._unpickle(data)
+        self._redis.hdel(self._hash, job.id)  # unset
+        logger.debug("Job (%s) claimed", job.id)
 
-            # notify if the transaction aborts
-            def after_commit_or_abort(success=False):
-                if not success and not job.is_side_effect_free:
-                    logger.warning("Transaction abort for [%s] (%s)",
-                               self._name, job.id)
-                    notify(JobAbortedEvent(job))
-                    transaction.get().addAfterCommitHook(after_commit_or_abort)
-            return job
+        # notify if the transaction aborts
+        def after_commit_or_abort(success=False):
+            if not success and not job.is_side_effect_free:
+                logger.warning("Transaction abort for [%s] (%s)",
+                           self._name, job.id)
+                notify(JobAbortedEvent(job))
+                transaction.get().addAfterCommitHook(after_commit_or_abort)
+        return job
 
     def empty(self):
         # pylint: disable=no-member
@@ -297,18 +309,14 @@ class ScoredQueueMixin(QueueMixin):
                 score = time.time()
         pipe.zadd(self._name, {jid: score})
         pipe.hset(self._hash, jid, data)
-        pipe.hlen(self._hash)
         results = pipe.execute()
         return results[-1]
 
     def _do_claim_client(self):
         raise NotImplementedError()
 
-    def _do_claim(self):
-        return self._do_claim_client()
-
-    def claim(self, default=None):
-        jid = self._do_claim()
+    def _do_claim(self, default=None):
+        jid = self._do_claim_client()
         if jid is None:
             return default
         # pylint: disable=no-member
@@ -396,4 +404,4 @@ def _timing(operation, name):
     with Metric(name):
         result = operation()
     done = time.time()
-    return (result, (done - now), )
+    return (result, (done - now),)
