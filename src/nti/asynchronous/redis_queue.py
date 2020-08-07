@@ -84,10 +84,10 @@ class QueueMixin(object):
         result = zlib.compress(bio.read())
         return result
 
-    def _update_length_stat(self):
+    def _update_length_stat(self, size=None):
         client = statsd_client()
         if client is not None:
-            size = len(self)
+            size = len(self) if size is None else size
             client.gauge(self._queue_length_metric_name, size)
 
     def _do_put_job(self, pipe, data, tail=True, jid=None):
@@ -99,8 +99,8 @@ class QueueMixin(object):
 
     def _put_job(self, *args, **kwargs):
         _do_put = functools.partial(self._do_put_job, *args, **kwargs)
-        unused_results, duration = _timing(_do_put, self._put_metric_name)
-        self._update_length_stat()
+        queue_size, duration = _timing(_do_put, self._put_metric_name)
+        self._update_length_stat(queue_size)
         if duration > LONG_PUSH_DURATION_IN_SECS:
             logger.warning("Slow running redis push (%s)", duration)
 
@@ -312,6 +312,7 @@ class ScoredQueueMixin(QueueMixin):
                 score = time.time()
         pipe.zadd(self._name, {jid: score})
         pipe.hset(self._hash, jid, data)
+        pipe.hlen(self._hash)
         results = pipe.execute()
         return results[-1]
 
