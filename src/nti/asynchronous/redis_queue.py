@@ -168,8 +168,11 @@ class QueueMixin(object):
         return result or ()
 
     def __len__(self):
+        """
+        Length of the list.
+        """
         # pylint: disable=no-member
-        result = self._redis.hlen(self._hash)
+        result = self._redis.llen(self._name)
         return result or 0
 
     def __contains__(self, key):
@@ -376,6 +379,14 @@ class ScoredQueueMixin(QueueMixin):
 
     def __iter__(self):
         return iter(self.all(True))
+
+    def __len__(self):
+        """
+        Length of the set.
+        """
+        # pylint: disable=no-member
+        result = self._redis.hlen(self._hash)
+        return result or 0
 
 
 @interface.implementer(IRedisQueue)

@@ -12,7 +12,6 @@ from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_in
 from hamcrest import is_not
-from hamcrest import contains
 from hamcrest import not_none
 from hamcrest import equal_to
 from hamcrest import has_length
