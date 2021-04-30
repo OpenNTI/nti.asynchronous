@@ -14,14 +14,15 @@ import time
 
 import zlib
 
-from io import BytesIO
+from ZODB._compat import HIGHEST_PROTOCOL
+
+from ZODB._compat import dumps
+from ZODB._compat import loads
 
 from datetime import datetime
 
 from perfmetrics import statsd_client
 from perfmetrics import Metric
-
-from six.moves import cPickle as pickle
 
 import transaction
 
@@ -78,7 +79,7 @@ class QueueMixin(object):
         return self.__redis() if callable(self.__redis) else self.__redis
 
     def _pickle(self, job):
-        return zlib.compress(pickle.dumps(job, pickle.HIGHEST_PROTOCOL))
+        return zlib.compress(dumps(job, HIGHEST_PROTOCOL))
 
     def _update_length_stat(self, size=None):
         client = statsd_client()
@@ -131,7 +132,7 @@ class QueueMixin(object):
 
     def _unpickle(self, data):
         data = zlib.decompress(data)
-        result = pickle.loads(data)
+        result = loads(data)
         assert IJob.providedBy(result)
         return result
 
