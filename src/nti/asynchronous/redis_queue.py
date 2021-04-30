@@ -78,11 +78,7 @@ class QueueMixin(object):
         return self.__redis() if callable(self.__redis) else self.__redis
 
     def _pickle(self, job):
-        bio = BytesIO()
-        pickle.dump(job, bio)
-        bio.seek(0)
-        result = zlib.compress(bio.read())
-        return result
+        return zlib.compress(pickle.dumps(job, pickle.HIGHEST_PROTOCOL))
 
     def _update_length_stat(self, size=None):
         client = statsd_client()
@@ -135,9 +131,7 @@ class QueueMixin(object):
 
     def _unpickle(self, data):
         data = zlib.decompress(data)
-        bio = BytesIO(data)
-        bio.seek(0)
-        result = pickle.load(bio)
+        result = pickle.loads(data)
         assert IJob.providedBy(result)
         return result
 
