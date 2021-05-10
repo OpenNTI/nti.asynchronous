@@ -37,6 +37,13 @@ from nti.property.property import alias
 
 from nti.schema.eqhash import EqHash
 
+try:
+    from traceback import clear_frames
+except ImportError:
+    # python 2
+    assert bytes is str
+    clear_frames = lambda tb: None
+
 NEW_ID = 0
 ACTIVE_ID = 1
 FAILED_ID = 3
@@ -60,6 +67,7 @@ class Job(object):
     __parent__ = None
 
     _id = None
+    _exc_info = None
     _is_side_effect_free = False
     _error = _active_start = _active_end = None
     _status_id = _callable_name = _callable_root = _result = None
@@ -78,6 +86,21 @@ class Job(object):
         self.kwargs = dict(kwargs)
         self.callable = _tmpargs.pop(0)
         self.args = tuple(_tmpargs)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        if self._exc_info:
+            try:
+                # Can the interpreter construct with no args?
+                raise self._exc_info[0]
+            except self._exc_info[0]:
+                # It can, save the class so we can raise it.
+                state['_exc_info'] = self._exc_info[0], None, None
+            except TypeError:
+                # TypeError can always be created with no args, so this means self.exc[0] could not
+                # It cannot, lose the class
+                state['_exc_info'] = Exception, None, None
+        return state
 
     @property
     def queue(self):
@@ -155,6 +178,8 @@ class Job(object):
             self._result = result
             return result
         except Exception as e:  # pylint: disable=broad-except
+            self._exc_info = sys.exc_info()
+            clear_frames(self._exc_info[-1])
             self._status_id = FAILED_ID
             self._error = self.error_adapter(sys.exc_info(), None) \
                        or self.error_adapter(e, None)
@@ -175,6 +200,19 @@ class Job(object):
         xhash = 47
         xhash ^= hash(self._id) if self._id else int(id(self) / 16)
         return xhash
+
+    def reraise(self):
+        if self._exc_info is not None:
+            if self._exc_info[1] is not None:
+                raise self._exc_info[0], self._exc_info[1], self._exc_info[2]
+            elif self._error is not None:
+                # Pickled and re-raise? This case should not be common
+                # It does not really make sense to: run a job, pickle it,
+                # unpickle it, and re-raise some pickled exception.
+                # If we do though, lets use our stored exception class (_exc_info[0])
+                # and the pickled message (even if not ideal).
+                # Maybe we should just complain if we get here.
+                raise self._exc_info[0](self.error.message)
 
 
 def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
