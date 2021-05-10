@@ -22,6 +22,8 @@ from nti.asynchronous.redis_queue import PriorityQueue as RedisQueue
 from nti.asynchronous.scheduled import SCHEDULED_JOB_QUEUE_NAMES
 from nti.asynchronous.scheduled import SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES
 
+from nti.asynchronous.scheduled import ImmediateQueueRunner
+
 from nti.asynchronous.scheduled.interfaces import IScheduledQueueFactory
 from nti.asynchronous.scheduled.interfaces import IScheduledExecutorQueueFactory
 
@@ -30,15 +32,6 @@ from nti.asynchronous.scheduled.redis_queue import ScheduledQueue
 from nti.coremetadata.interfaces import IRedisClient
 
 logger = __import__('logging').getLogger(__name__)
-
-
-class ImmediateQueueRunner(object):
-    """
-    A queue that immediately runs the given job. This is generally
-    desired for test or dev mode.
-    """
-    def put(self, job):
-        job()
 
 
 class _AbstractQueueFactory(object):

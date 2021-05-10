@@ -14,3 +14,13 @@ SCHEDULED_JOB_QUEUE_NAMES = (SCHEDULED_JOB_QUEUE_NAME, )
 
 SCHEDULED_JOB_EXECUTOR_QUEUE_NAME = '++etc++nti++asynchronous++queue++scheduled++executor'
 SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES = (SCHEDULED_JOB_EXECUTOR_QUEUE_NAME, )
+
+
+class ImmediateQueueRunner(object):
+    """
+    A queue that immediately runs the given job. This is generally
+    desired for test or dev mode.
+    """
+    def put(self, job):
+        job()
+        job.reraise()
