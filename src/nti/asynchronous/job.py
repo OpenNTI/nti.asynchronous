@@ -60,7 +60,7 @@ class Job(object):
     __parent__ = None
 
     _id = None
-    _exception = None
+    _exc_info = None
     _is_side_effect_free = False
     _error = _active_start = _active_end = None
     _status_id = _callable_name = _callable_root = _result = None
@@ -156,7 +156,7 @@ class Job(object):
             self._result = result
             return result
         except Exception as e:  # pylint: disable=broad-except
-            self._exception = e
+            self._exc_info = sys.exc_info()
             self._status_id = FAILED_ID
             self._error = self.error_adapter(sys.exc_info(), None) \
                        or self.error_adapter(e, None)
@@ -179,8 +179,8 @@ class Job(object):
         return xhash
 
     def reraise(self):
-        if self._exception is not None:
-            raise self._exception
+        if self._exc_info is not None:
+            raise self._exc_info[0], self._exc_info[1], self._exc_info[2]
 
 
 def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
