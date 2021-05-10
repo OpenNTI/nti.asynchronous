@@ -16,6 +16,8 @@ from hamcrest import assert_that
 from hamcrest import has_property
 from hamcrest import greater_than
 
+from nose.tools import assert_raises
+
 from nti.testing.matchers import validly_provides
 from nti.testing.matchers import verifiably_provides
 
@@ -133,6 +135,16 @@ class TestJob(AsyncTestCase):
         assert_that(str(error), is_not(none()))
         assert_that(error,
                     has_property('message', has_length(greater_than(1))))
+
+    def test_reraise(self):
+        exc = Exception('error')
+        def raise_exc():
+            raise exc
+        job = Job(raise_exc)
+        job()
+        assert_that(job.has_failed(), is_(True))
+        with assert_raises(Exception):
+            job.reraise()
 
     def test_pickle(self):
         job = Job(multiply, 5, 3)

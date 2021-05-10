@@ -108,9 +108,9 @@ class IRedisQueue(IBaseQueue):
     def all(unpickle=True):
         """
         Return all jobs in the queue
-        
+
         :param unpickle: Flag to return the jobs as unpickled objects
-        :type unpickle: bool 
+        :type unpickle: bool
         """
 
     def failed(unpickle=True):
@@ -118,7 +118,7 @@ class IRedisQueue(IBaseQueue):
         Return all failed jobs in the queue
 
         :param unpickle: Flag to return the failed jobs as unpickled objects
-        :type unpickle: bool 
+        :type unpickle: bool
         """
 
 
@@ -182,6 +182,11 @@ class IJob(IAttributeAnnotatable, IContained):
         check if job has failed
         """
     hasFailed = has_failed
+
+    def reraise():
+        """
+        If a job fails, this will reraise the underlying exception.
+        """
 
 
 class IAsyncReactor(interface.Interface):
