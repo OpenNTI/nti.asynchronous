@@ -207,6 +207,11 @@ class Job(object):
                 raise self._exc_info[0], self._exc_info[1], self._exc_info[2]
             elif self._error is not None:
                 # Pickled and re-raise? This case should not be common
+                # It does not really make sense to: run a job, pickle it,
+                # unpickle it, and re-raise some pickled exception.
+                # If we do though, lets use our stored exception class (_exc_info[0])
+                # and the pickled message (even if not ideal).
+                # Maybe we should just complain if we get here.
                 raise self._exc_info[0](self.error.message)
 
 

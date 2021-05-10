@@ -18,8 +18,10 @@ SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES = (SCHEDULED_JOB_EXECUTOR_QUEUE_NAME, )
 
 class ImmediateQueueRunner(object):
     """
-    A queue that immediately runs the given job. This is generally
-    desired for test or dev mode.
+    A queue that immediately runs the given job. This may be used in
+    live environments to inline jobs.
+
+    We *must* reraise in such scenarios to avoid mangling transaction handling.
     """
     def put(self, job):
         job()
