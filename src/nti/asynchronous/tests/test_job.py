@@ -15,6 +15,7 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_property
 from hamcrest import greater_than
+from hamcrest import contains_string
 
 from nose.tools import assert_raises
 
@@ -39,6 +40,10 @@ from nti.asynchronous.tests import AsyncTestCase
 
 def call():
     return 'function result'
+
+
+def raise_exc():
+    raise Exception('job error')
 
 
 class Demo(object):
@@ -137,14 +142,18 @@ class TestJob(AsyncTestCase):
                     has_property('message', has_length(greater_than(1))))
 
     def test_reraise(self):
-        exc = Exception('error')
-        def raise_exc():
-            raise exc
         job = Job(raise_exc)
         job()
         assert_that(job.has_failed(), is_(True))
-        with assert_raises(Exception):
+        with assert_raises(Exception) as exc:
             job.reraise()
+            assert_that(exc.message, is_("job error"))
+
+        bad_job = pickle.dumps(job)
+        new_job = pickle.loads(bad_job)
+        with assert_raises(Exception) as exc:
+            new_job.reraise()
+            assert_that(exc.message, contains_string("job error"))
 
     def test_pickle(self):
         job = Job(multiply, 5, 3)

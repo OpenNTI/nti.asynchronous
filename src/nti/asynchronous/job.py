@@ -87,6 +87,21 @@ class Job(object):
         self.callable = _tmpargs.pop(0)
         self.args = tuple(_tmpargs)
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        if self._exc_info:
+            try:
+                # Can the interpreter construct with no args?
+                raise self._exc_info[0]
+            except self._exc_info[0]:
+                # It can, save the class so we can raise it.
+                state['_exc_info'] = self._exc_info[0], None, None
+            except TypeError:
+                # TypeError can always be created with no args, so this means self.exc[0] could not
+                # It cannot, lose the class
+                state['_exc_info'] = Exception, None, None
+        return state
+
     @property
     def queue(self):
         return self.__parent__
@@ -188,7 +203,11 @@ class Job(object):
 
     def reraise(self):
         if self._exc_info is not None:
-            raise self._exc_info[0], self._exc_info[1], self._exc_info[2]
+            if self._exc_info[1] is not None:
+                raise self._exc_info[0], self._exc_info[1], self._exc_info[2]
+            elif self._error is not None:
+                # Pickled and re-raise? This case should not be common
+                raise self._exc_info[0](self.error.message)
 
 
 def create_job(call, jargs=None, jkwargs=None, jobid=None, cls=Job):
