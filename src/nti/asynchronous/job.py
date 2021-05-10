@@ -37,6 +37,13 @@ from nti.property.property import alias
 
 from nti.schema.eqhash import EqHash
 
+try:
+    from traceback import clear_frames
+except ImportError:
+    # python 2
+    assert bytes is str
+    clear_frames = lambda tb: None
+
 NEW_ID = 0
 ACTIVE_ID = 1
 FAILED_ID = 3
@@ -157,6 +164,7 @@ class Job(object):
             return result
         except Exception as e:  # pylint: disable=broad-except
             self._exc_info = sys.exc_info()
+            clear_frames(self._exc_info[-1])
             self._status_id = FAILED_ID
             self._error = self.error_adapter(sys.exc_info(), None) \
                        or self.error_adapter(e, None)
