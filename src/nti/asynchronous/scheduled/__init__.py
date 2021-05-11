@@ -16,6 +16,15 @@ SCHEDULED_JOB_EXECUTOR_QUEUE_NAME = '++etc++nti++asynchronous++queue++scheduled+
 SCHEDULED_JOB_EXECUTOR_QUEUE_NAMES = (SCHEDULED_JOB_EXECUTOR_QUEUE_NAME, )
 
 
+class NonRaisingImmediateQueueRunner(object):
+    """
+    A queue that immediately runs the given job and ignores any exceptions.
+    This is generally desired for test or dev mode.
+    """
+    def put(self, job):
+        job()
+
+
 class ImmediateQueueRunner(object):
     """
     A queue that immediately runs the given job. This may be used in
