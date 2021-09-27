@@ -10,7 +10,7 @@ entry_points = {
 TESTS_REQUIRE = [
     'fakeredis',
     'fudge',
-    'nti.dataserver',
+    'nti.dataserver[test]',
     'nti.testing',
     'zope.dottedname',
     'zope.testrunner',
@@ -52,7 +52,7 @@ setup(
     tests_require=TESTS_REQUIRE,
     install_requires=[
         'setuptools',
-	'nti.coremetadata',
+	    'nti.coremetadata',
         'nti.property',
         'nti.site',
         'nti.schema',
